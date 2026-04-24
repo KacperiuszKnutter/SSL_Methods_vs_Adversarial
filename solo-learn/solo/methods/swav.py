@@ -153,7 +153,7 @@ class SwAV(BaseMethod):
 
         Returns:
             Dict[str, Any]:
-                a dict containing the outputs of the parent,
+                a dict containing the ModelsOutputs of the parent,
                 the projected features and the logits.
         """
 
@@ -172,7 +172,7 @@ class SwAV(BaseMethod):
 
         Returns:
             Dict[str, Any]:
-                a dict containing the outputs of the parent,
+                a dict containing the ModelsOutputs of the parent,
                 the projected features and the logits.
         """
 

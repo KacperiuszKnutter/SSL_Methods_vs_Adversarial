@@ -5,7 +5,7 @@ defaults:
   - override hydra/hydra_logging: disabled
   - override hydra/job_logging: disabled
 
-# disable hydra outputs
+# disable hydra ModelsOutputs
 hydra:
   output_subdir: null
   run:

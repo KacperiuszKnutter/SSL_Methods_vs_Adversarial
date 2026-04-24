@@ -89,7 +89,7 @@ class SupCon(BaseMethod):
 
         Returns:
             Dict[str, Any]:
-                a dict containing the outputs of the parent
+                a dict containing the ModelsOutputs of the parent
                 and the projected features.
         """
 
@@ -104,7 +104,7 @@ class SupCon(BaseMethod):
             X (torch.Tensor): batch of images in tensor format.
 
         Returns:
-            Dict[]: a dict containing the outputs of the parent
+            Dict[]: a dict containing the ModelsOutputs of the parent
                 and the projected features.
         """
 

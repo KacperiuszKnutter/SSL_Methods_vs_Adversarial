@@ -27,7 +27,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import MultiStepLR
-
 from solo.backbones import (
     convnext_base,
     convnext_large,
@@ -436,7 +435,7 @@ class BaseMethod(pl.LightningModule):
     def multicrop_forward(self, X: torch.tensor) -> Dict[str, Any]:
         """Basic multicrop forward method that performs the forward pass
         for the multicrop views. Children classes can override this method to
-        add new outputs but should still call this function. Make sure
+        add new ModelsOutputs but should still call this function. Make sure
         that this method and its overrides always return a dict.
 
         Args:
@@ -816,7 +815,7 @@ class BaseMomentumMethod(BaseMethod):
         end of the current training step if an optimizer step was performed.
 
         Args:
-            outputs (Dict[str, Any]): the outputs of the training step.
+            outputs (Dict[str, Any]): the ModelsOutputs of the training step.
             batch (Sequence[Any]): a batch of data in the format of [img_indexes, [X], Y], where
                 [X] is a list of size self.num_crops containing batches of images.
             batch_idx (int): index of the batch.

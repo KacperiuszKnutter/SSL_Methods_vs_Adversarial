@@ -144,7 +144,7 @@ class ReSSL(BaseMomentumMethod):
             X (torch.Tensor): batch of images in tensor format.
 
         Returns:
-            Dict[str, Any]: a dict containing the outputs of the parent and the projected features.
+            Dict[str, Any]: a dict containing the ModelsOutputs of the parent and the projected features.
         """
 
         out = super().forward(X)
@@ -160,7 +160,7 @@ class ReSSL(BaseMomentumMethod):
             X (torch.Tensor): batch of images in tensor format.
 
         Returns:
-            Dict[str, Any]: a dict containing the outputs of the parent and the key.
+            Dict[str, Any]: a dict containing the ModelsOutputs of the parent and the key.
         """
 
         out = super().momentum_forward(X)

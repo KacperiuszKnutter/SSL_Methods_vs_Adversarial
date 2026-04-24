@@ -222,7 +222,7 @@ class All4One(BaseMomentumMethod):
             X (torch.Tensor): batch of images in tensor format.
 
         Returns:
-            Dict[str, Any]: a dict containing the outputs of
+            Dict[str, Any]: a dict containing the ModelsOutputs of
                 the parent and the momentum projected features.
         """
 
@@ -239,7 +239,7 @@ class All4One(BaseMomentumMethod):
 
         Returns:
             Dict[str, Any]:
-                a dict containing the outputs of the parent, the projected features and the
+                a dict containing the ModelsOutputs of the parent, the projected features and the
                 predicted features.
         """
 

@@ -223,7 +223,7 @@ wandb*/
 auto_umap/
 
 # datasets dir
-datasets/
+project/configs/datasets/
 # saved models
 *.pt
 *.pth
@@ -343,3 +343,6 @@ pip-wheel-metadata/
 
 # End of https://www.gitignore.io/api/python,visualstudiocode
 
+# repo solo/
+# dont want to cheange nothin for now
+solo-learn

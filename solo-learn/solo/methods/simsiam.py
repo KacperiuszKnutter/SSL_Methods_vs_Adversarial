@@ -106,7 +106,7 @@ class SimSiam(BaseMethod):
 
         Returns:
             Dict[str, Any]:
-                a dict containing the outputs of the parent
+                a dict containing the ModelsOutputs of the parent
                 and the projected and predicted features.
         """
 

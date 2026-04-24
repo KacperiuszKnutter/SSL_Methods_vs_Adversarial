@@ -56,7 +56,7 @@ def weighted_mean(outputs: List[Dict], key: str, batch_size_key: str) -> float:
     """Computes the mean of the values of a key weighted by the batch size.
 
     Args:
-        outputs (List[Dict]): list of dicts containing the outputs of a validation step.
+        outputs (List[Dict]): list of dicts containing the ModelsOutputs of a validation step.
         key (str): key of the metric of interest.
         batch_size_key (str): key of batch size values.
 

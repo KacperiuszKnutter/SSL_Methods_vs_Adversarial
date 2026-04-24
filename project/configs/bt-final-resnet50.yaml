@@ -1,0 +1,58 @@
+method: barlow_twins
+dataset: cars
+backbone: resnet50
+num_classes: 196
+
+name: bt-final-resnet50
+
+checkpoint: null
+use_projector: false
+
+backbone_args:
+  zero_init_residual: true
+
+proj_hidden_dim: 8192
+proj_output_dim: 8192
+lamb: 0.005
+scale_loss: 0.025
+
+max_epochs: 1000
+optimizer: sgd
+lars: true
+lr: 1.6
+weight_decay: 0.0000015
+classifier_lr: 0.5
+exclude_bias_n_norm_lars: true
+accumulate_grad_batches: 1
+extra_optimizer_args:
+  momentum: 0.9
+
+scheduler: warmup_cosine
+scheduler_interval: step
+min_lr: 0.0
+warmup_start_lr: 0.0
+warmup_epochs: 10
+lr_decay_steps: null
+
+num_large_crops: 2
+num_small_crops: 0
+num_crops_per_aug: [2, 0]
+
+batch_size: 2048
+num_workers: 8
+data_dir: ./datasets
+train_dir: null
+val_dir: null
+
+gpus: "0"
+
+report_dir: ./outputs/reports
+embeddings_dir: ./outputs/embeddings
+checkpoint_dir: ./outputs/checkpoints
+
+knn_k: 20
+knn_temperature: 0.1
+knn_distance_fx: cosine
+
+linear_max_iter: 1000
+linear_c: 1.0

@@ -112,7 +112,7 @@ class VICReg(BaseMethod):
             X (torch.Tensor): a batch of images in the tensor format.
 
         Returns:
-            Dict[str, Any]: a dict containing the outputs of the parent and the projected features.
+            Dict[str, Any]: a dict containing the ModelsOutputs of the parent and the projected features.
         """
 
         out = super().forward(X)

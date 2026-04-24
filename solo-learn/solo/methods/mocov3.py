@@ -167,7 +167,7 @@ class MoCoV3(BaseMomentumMethod):
             X (torch.Tensor): batch of images in tensor format.
 
         Returns:
-            Dict[str, Any]: a dict containing the outputs of the parent and the projected features.
+            Dict[str, Any]: a dict containing the ModelsOutputs of the parent and the projected features.
         """
 
         out = super().forward(X)
@@ -184,7 +184,7 @@ class MoCoV3(BaseMomentumMethod):
             X (torch.Tensor): batch of images in tensor format.
 
         Returns:
-            Dict[str, Any]: a dict containing the outputs of
+            Dict[str, Any]: a dict containing the ModelsOutputs of
                 the parent and the momentum projected features.
         """
 
