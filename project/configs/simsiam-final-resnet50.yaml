@@ -1,0 +1,58 @@
+method: simsiam
+dataset: cifar10
+backbone: resnet50
+num_classes: 196
+
+name: simsiam-final-resnet50
+
+# Ścieżka do Twojego lokalnego checkpointu pobranego z repozytorium FAIR
+checkpoint: "project/models_out/checkpoints/simsiam-resnet50-1x.pth.tar"
+use_projector: false # false do Baseline SVD (backbone), true do pełnej architektury
+
+backbone_args:
+  zero_init_residual: true # Inicjalizacja skali BN na 0 w ostatnim bloku [cite: 540]
+
+# Architektura MLP wg publikacji [cite: 146, 151]
+proj_hidden_dim: 2048
+proj_output_dim: 2048
+pred_hidden_dim: 512 # Bottleneck structure [cite: 151]
+
+max_epochs: 100 # Standardowy czas pre-trainingu w badaniach SimSiam [cite: 153]
+optimizer: sgd # SimSiam nie wymaga LARS [cite: 139]
+lr: 0.1 # Skalowanie lr * batch_size / 256 -> 0.05 * 512 / 256 [cite: 140]
+weight_decay: 0.0001 # [cite: 142]
+classifier_lr: 0.5
+exclude_bias_n_norm_lars: false # W SimSiam WD stosuje się też do BN [cite: 541]
+accumulate_grad_batches: 1
+extra_optimizer_args:
+momentum: 0.9 # [cite: 142]
+
+scheduler: warmup_cosine
+scheduler_interval: step
+min_lr: 0.0
+warmup_start_lr: 0.0
+warmup_epochs: 10
+lr_decay_steps: null
+
+num_large_crops: 2
+num_small_crops: 0
+num_crops_per_aug: [2, 0]
+
+batch_size: 512 # Domyślny batch size przyjazny dla 8-GPU [cite: 143]
+num_workers: 8
+data_dir: ./datasets
+train_dir: null
+val_dir: null
+
+gpus: "0"
+
+report_dir: ./outputs/reports
+embeddings_dir: ./outputs/embeddings
+checkpoint_dir: ./outputs/checkpoints
+
+knn_k: 20
+knn_temperature: 0.1
+knn_distance_fx: cosine
+
+linear_max_iter: 1000
+linear_c: 1.0

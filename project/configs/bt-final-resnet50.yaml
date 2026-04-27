@@ -1,17 +1,17 @@
 method: barlow_twins
-dataset: cars
+dataset: cifar10
 backbone: resnet50
 num_classes: 196
 
 name: bt-final-resnet50
 
-checkpoint: null
+checkpoint: "pytorch_hub"
 use_projector: false
 
 backbone_args:
   zero_init_residual: true
 
-proj_hidden_dim: 8192
+proj_hidden_dim: 2048
 proj_output_dim: 8192
 lamb: 0.005
 scale_loss: 0.025

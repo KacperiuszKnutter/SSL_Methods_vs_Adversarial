@@ -14,6 +14,8 @@ from project.src.feature_analyzer import FeatureAnalyzer
 
 from solo.data.classification_dataloader import prepare_data as prepare_data_classification
 from solo.utils.knn import WeightedKNNClassifier
+from torchvision.models import resnet50, ResNet50_Weights
+
 
 class BenchmarkRunner:
     #First-stage benchmark runner.
@@ -46,36 +48,102 @@ class BenchmarkRunner:
 
     def load_checkpoint(self, model) -> None:
         #Load checkpoint into model if checkpoint path is provided.
-        #- solo-learn checkpoints may store weights under different keys
+        #- solo-learn does not support checkpoints no more so we need to fetch them from original repos.
         #- this implementation first tries plain state_dict loading, then tries common nested keys
 
         checkpoint_path = self.config.get("checkpoint")
         if not checkpoint_path:
             return
 
+
+        if checkpoint_path == "pytorch_hub":
+            self._load_from_hub(model)
+            return
+
         ckpt_path = Path(checkpoint_path)
-        if not ckpt_path.exists():
-            raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
-
         checkpoint = torch.load(ckpt_path, map_location=self.device)
+        state_dict = checkpoint.get("state_dict", checkpoint.get("model", checkpoint))
 
-        if isinstance(checkpoint, dict):
-            if "state_dict" in checkpoint:
-                state_dict = checkpoint["state_dict"]
-            elif "model" in checkpoint:
-                state_dict = checkpoint["model"]
-            else:
-                state_dict = checkpoint
+        # if prefix is non existant we need to add it
+        # this will allow for fetching official chechkpts
+        new_state_dict = {}
+        has_backbone_prefix = any(k.startswith("backbone.") for k in state_dict.keys())
+
+        if not has_backbone_prefix:
+            print("[CHECKPOINT] Official format detected. Mapping keys to 'backbone.*'")
+            for k, v in state_dict.items():
+                new_state_dict[f"backbone.{k}"] = v
+            state_dict = new_state_dict
+
+        msg = model.load_state_dict(state_dict, strict=False)
+        print(f"[CHECKPOINT] Loaded. Missing keys: {len(msg.missing_keys)}, Unexpected: {len(msg.unexpected_keys)}")
+
+    def _load_from_hub(self, model):
+        # fetches weights of fully pretrained models with resnet50 architecture from pytorch hub
+        method = self.config["method"].lower()
+        print(f"[HUB] Fetching official weights for {method}...")
+
+
+        # from official repositories
+        #DINO
+        if method == "dino":
+            # https://github.com/facebookresearch/dino
+            official_model = torch.hub.load('facebookresearch/dino:main', 'dino_resnet50')
+            model.backbone.load_state_dict(official_model.state_dict(), strict=False)
+
+        elif method ==  "simclr":
+            # methods checkpoints no longer available on repositories smh
+            ckpt_path = Path(f"project/models_out/checkpoints/simclr-resnet50-1x.pth")
+            if not ckpt_path.exists():
+                raise FileNotFoundError(f"Download weights for {method} and put em in  {ckpt_path}")
+
+            state_dict = torch.load(ckpt_path, map_location=self.device)
+            # mapping for solo learn
+            if "state_dict" in state_dict:
+                state_dict = state_dict["state_dict"]
+
+            new_state_dict = {}
+            for k, v in state_dict.items():
+                # Usuwamy ewentualne prefiksy i dodajemy 'backbone.'
+                clean_key = k.replace("module.", "").replace("encoder.", "").replace("resnet.", "")
+                new_state_dict[f"backbone.{clean_key}"] = v
+
+            model.load_state_dict(new_state_dict, strict=False)
+            print(f"[HUB] Successfully loaded local official weights for {method}")
+
+        elif method ==  "simsiam":
+            # methods checkpoints no longer available on repositories smh
+            ckpt_path = Path(f"project/models_out/checkpoints/simsiam-resnet50-1x.pth.tar")
+            if not ckpt_path.exists():
+                raise FileNotFoundError(f"Download weights for {method} and put em in  {ckpt_path}")
+
+            state_dict = torch.load(ckpt_path, map_location=self.device)
+            # mapping for solo learn
+            if "state_dict" in state_dict:
+                state_dict = state_dict["state_dict"]
+
+            new_state_dict = {}
+            for k, v in state_dict.items():
+                # Usuwamy ewentualne prefiksy i dodajemy 'backbone.'
+                clean_key = k.replace("module.", "").replace("encoder.", "").replace("resnet.", "")
+                new_state_dict[f"backbone.{clean_key}"] = v
+
+            model.load_state_dict(new_state_dict, strict=False)
+            print(f"[HUB] Successfully loaded local official weights for {method}")
+
+        elif method == "barlow_twins":
+            # https://github.com/facebookresearch/barlowtwins
+            official_model = torch.hub.load('facebookresearch/barlowtwins:main', 'resnet50')
+            model.backbone.load_state_dict(official_model.state_dict(), strict=False)
+        elif method == "vicreg":
+            # supports on offical github downloading ckpts
+            # https://github.com/facebookresearch/vicreg
+            official_model = torch.hub.load('facebookresearch/vicreg:main', 'resnet50')
+            model.backbone.load_state_dict(official_model.state_dict(), strict=False)
         else:
-            raise ValueError(f"Unsupported checkpoint format at: {ckpt_path}")
-
-        missing, unexpected = model.load_state_dict(state_dict, strict=False)
-
-        print(f"[CHECKPOINT] Loaded from: {ckpt_path}")
-        if missing:
-            print(f"[CHECKPOINT] Missing keys: {len(missing)}")
-        if unexpected:
-            print(f"[CHECKPOINT] Unexpected keys: {len(unexpected)}")
+            # Fallback dla standardowego ResNet50 (np. SimCLR/Barlow często używa standardu)
+            official_model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
+            model.backbone.load_state_dict(official_model.state_dict(), strict=False)
 
     def create_eval_loader(self) -> DataLoader:
 
@@ -98,46 +166,34 @@ class BenchmarkRunner:
         )
         return val_loader
 
-
-
     @torch.no_grad()
-    def extract_embeddings(self,model,dataloader: DataLoader,use_projector: bool ,) -> Tuple[np.ndarray, np.ndarray]:
-        #Extract embeddings and labels from dataloader.
-
-        #Default behavior:
-        #- uses model(X)
-        #- expects output dict with "feats"
-        #- if use_projector=True and model exposes projector, tries to use it
-
+    def extract_embeddings(self, model, dataloader: DataLoader, use_projector: bool) -> Tuple[np.ndarray, np.ndarray]:
         all_embeddings = []
         all_labels = []
 
         for batch in dataloader:
-            # solo classification dataloader usually returns X, y
             X, y = batch
             X = X.to(self.device, non_blocking=True)
 
             out = model(X)
 
-            if not isinstance(out, dict) or "feats" not in out:
-                raise ValueError(
-                    "Model forward output must be a dict containing key 'feats'."
-                )
-
-            feats = out["feats"]
+            # Obsługa różnych formatów wyjściowych (słownik solo-learn vs czysty tensor)
+            if isinstance(out, dict):
+                feats = out["feats"]
+            else:
+                feats = out  # Oficjalne modele często zwracają bezpośrednio tensor
 
             if use_projector:
                 projector = getattr(model, "projector", None)
                 if projector is not None:
                     feats = projector(feats)
+                else:
+                    print("[WARNING] Projector requested but not found in model!")
 
             all_embeddings.append(feats.detach().cpu())
             all_labels.append(y.detach().cpu())
 
-        embeddings = torch.cat(all_embeddings, dim=0).numpy()
-        labels = torch.cat(all_labels, dim=0).numpy()
-
-        return embeddings, labels
+        return torch.cat(all_embeddings).numpy(), torch.cat(all_labels).numpy()
 
     def create_train_loader(self) -> DataLoader:
         dataset = self.config["dataset"]
@@ -232,7 +288,6 @@ class BenchmarkRunner:
         clf = LogisticRegression(
             max_iter=max_iter,
             C=c_value,
-            multi_class="auto",
             n_jobs=-1,
         )
         clf.fit(train_embeddings, train_labels)

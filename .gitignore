@@ -345,4 +345,17 @@ pip-wheel-metadata/
 
 # repo solo/
 # dont want to cheange nothin for now
-solo-learn
+solo-learn/solo/datasets/*
+
+# Dane
+datasets/
+
+# Wyniki eksperymentów
+outputs/
+project/models_out/
+
+# Pliki Pythona i środowiska
+.venv/
+*.pth.tar
+*.npy
+*.tar.gz

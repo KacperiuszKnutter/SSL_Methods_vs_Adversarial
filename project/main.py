@@ -35,7 +35,7 @@ def build_parser() -> ArgumentParser:
         "--config",
         type=str,
         required=True,
-        help="Path to YAML config, e.g. project/configs/test/byol_cifar10_resnet18.yaml",
+        help="Path to YAML config, e.g. project/configs/byol_cifar10_resnet18.yaml",
     )
     # optional overrides
     parser.add_argument("--checkpoint", type=str, default=None)

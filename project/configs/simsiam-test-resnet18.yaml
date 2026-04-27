@@ -1,9 +1,9 @@
-method: byol
+method: simsiam
 dataset: cifar10
 backbone: resnet18
 num_classes: 10
 
-name: byol-test-resnet18
+name: simsiam-test-resnet18
 
 checkpoint: null
 use_projector: false
@@ -11,24 +11,20 @@ use_projector: false
 backbone_args:
   zero_init_residual: true
 
-proj_hidden_dim: 4096
-proj_output_dim: 256
-pred_hidden_dim: 4096
+# MLP dla CIFAR [cite: 567, 568]
+proj_hidden_dim: 2048
+proj_output_dim: 2048
+pred_hidden_dim: 512
 
-base_tau: 0.9995
-final_tau: 1.0
-momentum_classifier: false
-
-max_epochs: 100
+max_epochs: 800 # [cite: 566]
 optimizer: sgd
-lars: true
-lr: 0.4
-weight_decay: 0.0000015
+lr: 0.06 # Skalowanie lr * batch_size / 256 -> 0.03 * 512 / 256 [cite: 566]
+weight_decay: 0.0005 # [cite: 566]
 classifier_lr: 0.5
-exclude_bias_n_norm_lars: true
+exclude_bias_n_norm_lars: false
 accumulate_grad_batches: 1
 extra_optimizer_args:
-  momentum: 0.9
+momentum: 0.9 # [cite: 566]
 
 scheduler: warmup_cosine
 scheduler_interval: step
@@ -38,10 +34,10 @@ warmup_epochs: 10
 lr_decay_steps: null
 
 num_large_crops: 2
-num_small_crops: 0
+num_small_crops: 0 # CIFAR nie używa blur ani małych cropów w tym badaniu [cite: 567]
 num_crops_per_aug: [2, 0]
 
-batch_size: 512
+batch_size: 512 # [cite: 566]
 num_workers: 4
 data_dir: ./datasets
 train_dir: null

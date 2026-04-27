@@ -1,11 +1,11 @@
 method: dino
-dataset: cars
+dataset: cifar10
 backbone: resnet50
 num_classes: 196
 
 name: dino-final-resnet50
 
-checkpoint: null
+checkpoint: "pytorch_hub"
 use_projector: false
 
 backbone_args:

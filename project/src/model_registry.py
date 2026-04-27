@@ -13,7 +13,7 @@ SOLO_LEARN_ROOT = PROJECT_ROOT / "solo-learn"
 if str(SOLO_LEARN_ROOT) not in sys.path:
     sys.path.insert(0, str(SOLO_LEARN_ROOT))
 
-from solo.methods import BarlowTwins, BYOL, DINO, SimCLR, VICReg
+from solo.methods import BarlowTwins, BYOL, DINO, SimCLR, VICReg, SimSiam
 from solo.methods.base import BaseMethod, BaseMomentumMethod
 
 
@@ -32,9 +32,11 @@ class ModelRegistry:
     _REGISTRY: Dict[str, Type] = {
         "barlow_twins": BarlowTwins,
         "simclr": SimCLR,
-        "byol": BYOL,
+        "byol": BYOL, # for now not working TODO: create own checkpoint
         "vicreg": VICReg,
         "dino": DINO,
+        "simsiam": SimSiam,
+
     }
 
     @classmethod

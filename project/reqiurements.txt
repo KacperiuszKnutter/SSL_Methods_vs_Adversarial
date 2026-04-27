@@ -1,0 +1,32 @@
+# first do:
+# python -m pip install --upgrade pip
+
+# second for new graphics cards (Cuda 12.8/12.6) such as rtx 5070
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+
+# if older veresion is not accepteed use nightly
+# pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu124
+
+# finish the installation
+# pip install -r requirements.txt
+
+# Common libs
+numpy<2.0.0
+scipy
+scikit-learn
+pandas
+matplotlib
+
+# Configs of solo learn require these
+omegaconf
+pyyaml
+tqdm
+
+#  SSL and metrics (solo-learn dependencies)
+torchmetrics==0.11.4
+pytorch-lightning==1.9.5
+
+# auxiliary
+einops
+wandb
+tensorboard
