@@ -7,6 +7,8 @@ import yaml
 from typing import Any, Dict, Optional
 from project.src.benchmark_runner import BenchmarkRunner
 from project.src.model_registry import ModelRegistry
+
+from project.src.report_builder import  BenchmarkReportBuilder
 # How to use
 # python -m project.main --b --config project/configs/test/byol_cifar10_resnet18.yaml
 # call for training: python main.py --t --method barlow_twins --dataset cifar10 --epochs 100
@@ -27,8 +29,8 @@ def build_parser() -> ArgumentParser:
     # type of desired experiment
     mode_group.add_argument("--b", action="store_true", help="Benchmark mode")
     mode_group.add_argument("--t", action="store_true", help="Training mode")
-    mode_group.add_argument("--a", action="store_true", help="Analysis mode")
-    mode_group.add_argument("--f", action="store_true", help="Full pipeline mode")
+    #mode_group.add_argument("--a", action="store_true", help="Analysis mode")
+    mode_group.add_argument("--f", action="store_true", help="Fine-tuning a model")
 
     # desired method
     parser.add_argument(
@@ -55,10 +57,8 @@ def resolve_mode(args: Namespace) -> str:
         return "benchmark"
     if args.t:
         return "train"
-    if args.a:
-        return "analyze"
     if args.f:
-        return "full"
+        return "finetune"
     raise ValueError("No mode selected")
 
 # ------------------------------------------ Building config for each method --------------------------------------------
@@ -138,18 +138,16 @@ def run_benchmark(config: dict) -> None:
     #load checkpoint, evaluate embeddings, kNN, linear eval
     runner = BenchmarkRunner(config)
     result = runner.run()
-    print(result)
 
-def run_analysis(config: dict) -> None:
-    print(f"[ANALYZE] method={config['method']} dataset={config['dataset']}")
-    # full analysis pca, svd, correlation
-    # this will use report_builder as well in order to generate reports on the fly
+    report_builder = BenchmarkReportBuilder(config)
+    report_paths = report_builder.build(result)
 
-def run_full(config: dict) -> None:
+    #print(result)
+    for key, path in report_paths.items():
+        print(f"Report saved for --> {key}: {path}")
+
+def fine_tuning(config: dict) -> None:
     print(f"[FULL] method={config['method']} dataset={config['dataset']}")
-    run_train(config)
-    run_benchmark(config)
-    run_analysis(config)
 
 # launches specific mode base on the entry args
 def dispatch_mode(config: dict) -> None:
@@ -158,10 +156,8 @@ def dispatch_mode(config: dict) -> None:
         run_train(config)
     elif mode == "benchmark":
         run_benchmark(config)
-    elif mode == "analyze":
-        run_analysis(config)
-    elif mode == "full":
-        run_full(config)
+    elif mode == "finetune":
+        fine_tuning(config)
     else:
         raise ValueError(f"Unknown mode: {mode}")
 

@@ -221,8 +221,7 @@ class BenchmarkRunner:
 
         run_name = self.config.get("name", "benchmark_run")
         emb_path = output_dir / f"{run_name}_{split_name}_embeddings.npy"
-        labels_path = output_dir / f"{run_name}_{split_name}labels.npy"
-
+        labels_path = output_dir / f"{run_name}_{split_name}_labels.npy"
         np.save(emb_path, embeddings)
         np.save(labels_path, labels)
 

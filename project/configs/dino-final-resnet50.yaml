@@ -43,9 +43,26 @@ warmup_start_lr: 0.0
 warmup_epochs: 10
 lr_decay_steps: null
 
+
+augmentations:
+  view1:
+    brightness: 0.4
+    contrast: 0.4
+    saturation: 0.2
+    hue: 0.1
+    gaussian_prob: 1.0
+    solarization_prob: 0.0
+  view2:
+    brightness: 0.4
+    contrast: 0.4
+    saturation: 0.2
+    hue: 0.1
+    gaussian_prob: 0.1
+    solarization_prob: 0.2
+
 num_large_crops: 2
 num_small_crops: 6
-num_crops_per_aug: [2, 6]
+num_crops_per_aug: [1, 7]
 
 batch_size: 1024
 num_workers: 8
