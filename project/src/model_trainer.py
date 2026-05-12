@@ -150,29 +150,29 @@ class ModelTrainer:
         )
 
 
-def build_ssl_transform(self, dataset: str):
-    augmentations = self.config.get("augmentations", {})
+    def build_ssl_transform(self, dataset: str):
+        augmentations = self.config.get("augmentations", {})
 
-    if not augmentations:
-        raise ValueError(
-            "Missing 'augmentations' section in YAML config. "
-            "Add augmentations to your method config."
+        if not augmentations:
+            raise ValueError(
+                "Missing 'augmentations' section in YAML config. "
+                "Add augmentations to your method config."
+            )
+
+        if "view1" in augmentations and "view2" in augmentations:
+            transform = [
+                prepare_transform(dataset, **augmentations["view1"]),
+                prepare_transform(dataset, **augmentations["view2"]),
+            ]
+            num_crops_per_aug = self.config.get("num_crops_per_aug", [1, 1])
+        else:
+            transform = [prepare_transform(dataset, **augmentations)]
+            num_crops_per_aug = self.config.get("num_crops_per_aug", [2])
+
+        return prepare_n_crop_transform(
+            transform,
+            num_crops_per_aug=num_crops_per_aug,
         )
-
-    if "view1" in augmentations and "view2" in augmentations:
-        transform = [
-            prepare_transform(dataset, **augmentations["view1"]),
-            prepare_transform(dataset, **augmentations["view2"]),
-        ]
-        num_crops_per_aug = self.config.get("num_crops_per_aug", [1, 1])
-    else:
-        transform = [prepare_transform(dataset, **augmentations)]
-        num_crops_per_aug = self.config.get("num_crops_per_aug", [2])
-
-    return prepare_n_crop_transform(
-        transform,
-        num_crops_per_aug=num_crops_per_aug,
-    )
 
     def create_trainer(self, callbacks, logger):
         accelerator = "gpu" if torch.cuda.is_available() else "cpu"

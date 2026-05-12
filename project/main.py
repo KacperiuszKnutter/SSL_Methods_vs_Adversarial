@@ -10,7 +10,13 @@ from project.src.model_registry import ModelRegistry
 
 from project.src.report_builder import  BenchmarkReportBuilder
 # How to use
-# python -m project.main --b --config project/configs/test/byol_cifar10_resnet18.yaml
+# calls for benchmarks for supported methods:
+# python -m project.main --b --config project/configs/dino-final-resnet50-cifar10-cifar10.yaml
+# python -m project.main --b --config project/configs/bt-final-resnet50.yaml
+# python -m project.main --b --config project/configs/simclr-final-resnet50.yaml
+# python -m project.main --b --config project/configs/simsiam-final-resnet50.yaml
+# python -m project.main --b --config project/configs/vicreg-final-resnet50.yaml
+
 # call for training: python main.py --t --method barlow_twins --dataset cifar10 --epochs 100
 # call for benchmark: python main.py --b --method simclr --dataset cars --checkpoint ./ckpt.ckpt
 # call for analysis: python main.py --a --method vicreg --dataset places --checkpoint ./ckpt.ckpt

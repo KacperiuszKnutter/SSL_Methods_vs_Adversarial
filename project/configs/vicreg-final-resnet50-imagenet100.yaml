@@ -3,12 +3,12 @@
 # crop_size: 32 # Ustaw 224 dla ImageNet / ImageNet-100
 # gaussian_blur: enabled: False # Włącz (True) tylko dla obrazów o wysokiej rozdzielczości (> 64px)
 
-method: dino
-dataset: cifar10
+method: vicreg
+dataset: imagenet100
 backbone: resnet50
-num_classes: 10
+num_classes: 100
 
-name: dino-final-resnet50-cifar10
+name: vicreg-final-resnet50-imagenet100
 
 checkpoint: "pytorch_hub"
 use_projector: false
@@ -16,64 +16,58 @@ use_projector: false
 backbone_args:
   zero_init_residual: true
 
-proj_hidden_dim: 2048
-proj_output_dim: 256
-num_prototypes: 4096 # 65536 for ImageNet
+proj_hidden_dim: 8192
+proj_output_dim: 8192
 
-student_temperature: 0.1
-teacher_temperature: 0.04
-warmup_teacher_temperature: 0.04
-final_teacher_temperature: 0.07
-warmup_teacher_temperature_epochs: 30
+sim_loss_weight: 25.0
+var_loss_weight: 25.0
+cov_loss_weight: 1.0
+eps: 0.0001
 
-base_tau:  0.9995 #0.996
-final_tau: 1.0
-momentum_classifier: false
-
-center_momentum: 0.9
-
-max_epochs: 800
-optimizer: lars #adamw
-lr: 0.3 #0.002
-weight_decay: 1e-6 #0.04
-weight_decay_end: 0.4
+max_epochs: 1000
+optimizer: lars #sgd
+lars: true
+lr:  0.3 #1.6
+weight_decay: 1e-4 #0.000001
 classifier_lr: 0.5
+exclude_bias_n_norm_lars: true
 accumulate_grad_batches: 1
-extra_optimizer_args: {}
+extra_optimizer_args:
+  momentum: 0.9
 
 scheduler: warmup_cosine
 scheduler_interval: step
-min_lr: 0.0
+min_lr: 0.002
 warmup_start_lr: 0.0
 warmup_epochs: 10
 lr_decay_steps: null
 
-
 augmentations:
-  view1:
-    rrc:
-      enabled: True
-      crop_size: 32
-    gaussian_blur:
-      prob: 1.0
-  view2:
-    rrc:
-      enabled: True
-      crop_size: 32
-    gaussian_blur:
-      prob: 0.1
-    solarization:
-      prob: 0.2
+  rrc:
+    enabled: True
+    crop_min_scale: 0.2 # Mniej agresywny crop dla 32x32[cite: 13]
+    crop_size: 224
+  color_jitter:
+    prob: 0.8
+  grayscale:
+    prob: 0.2
+  gaussian_blur:
+    enabled: False # Wyłączono blur dla VICReg CIFAR[cite: 13] 0.5 dla image net
+  solarization:
+    prob: 0.1
+  horizontal_flip:
+    prob: 0.5
+
 
 num_large_crops: 2
-num_small_crops: 6
-num_crops_per_aug: [1, 7]
+num_small_crops: 0
+num_crops_per_aug: [2, 0]
 
-batch_size: 1024
+batch_size:  256 #2048 dla ImageNet
 num_workers: 8
-data_dir: ./datasets
-train_dir: null
-val_dir: null
+data_dir: ./datasets/imagenet/
+train_dir: ./datasets/imagenet/train
+val_dir: ./datasets/imagenet/val
 
 gpus: "0"
 
@@ -84,7 +78,7 @@ embeddings_dir: project/models_out/embeddings
 checkpoint_dir: project/models_out/checkpoints/mine
 
 knn_k: 20
-knn_temperature: 0.07
+knn_temperature: 0.1
 knn_distance_fx: cosine
 
 linear_max_iter: 1000

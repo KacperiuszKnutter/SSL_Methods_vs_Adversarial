@@ -5,11 +5,11 @@
 
 
 method: barlow_twins
-dataset: cifar10
+dataset: imagenet100
 backbone: resnet50
-num_classes: 10
+num_classes: 100
 
-name: bt-final-resnet50
+name: bt-final-resnet50-imagenet100
 
 checkpoint: "pytorch_hub"
 use_projector: false
@@ -20,7 +20,7 @@ backbone_args:
 proj_hidden_dim: 2048
 proj_output_dim: 8192
 lamb: 0.005
-scale_loss:  0.1 # 0.025 previously but 0.1 for cifar
+scale_loss:  0.025 # 0.025 previously but 0.1 for cifar
 
 max_epochs: 1000
 optimizer: lars
@@ -46,7 +46,7 @@ augmentations:
     rrc:
       enabled: True
       crop_min_scale: 0.08
-      crop_size: 32
+      crop_size: 224
     color_jitter:
       prob: 0.8
       brightness: 0.4
@@ -65,7 +65,7 @@ augmentations:
     rrc:
       enabled: True
       crop_min_scale: 0.08
-      crop_size: 32 # change to 224 for larger ds
+      crop_size: 224 # change to 224 for larger ds, cifar 32
     color_jitter:
       prob: 0.8
     gaussian_blur:
@@ -81,9 +81,9 @@ num_crops_per_aug: [1, 1]
 
 batch_size: 2048
 num_workers: 8
-data_dir: ./datasets
-train_dir: null
-val_dir: null
+data_dir: ./datasets/imagenet/
+train_dir: ./datasets/imagenet/train
+val_dir: ./datasets/imagenet/val
 
 gpus: "0"
 

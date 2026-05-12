@@ -4,11 +4,11 @@
 # gaussian_blur: enabled: False # Włącz (True) tylko dla obrazów o wysokiej rozdzielczości (> 64px)
 
 method: simsiam
-dataset: cifar10
+dataset: imagenet100
 backbone: resnet50
-num_classes: 10
+num_classes: 100
 
-name: simsiam-final-resnet50
+name: simsiam-final-resnet50-imagenet100
 
 # Ścieżka do Twojego lokalnego checkpointu pobranego z repozytorium FAIR
 checkpoint: "project/models_out/checkpoints/simsiam-resnet50-1x.pth.tar"
@@ -44,7 +44,7 @@ augmentations:
   # Używa symmetric_weak.yaml (zazwyczaj bez blura lub z małym prob)[cite: 12]
   rrc:
     enabled: True
-    crop_size: 32
+    crop_size: 224
   color_jitter:
     prob: 0.8
   gaussian_blur:
@@ -58,9 +58,9 @@ num_crops_per_aug: [2, 0]
 
 batch_size:  256 #512 Domyślny batch size przyjazny dla 8-GPU [cite: 143]
 num_workers: 8
-data_dir: ./datasets
-train_dir: null
-val_dir: null
+data_dir: ./datasets/imagenet/
+train_dir: ./datasets/imagenet/train
+val_dir: ./datasets/imagenet/val
 
 gpus: "0"
 

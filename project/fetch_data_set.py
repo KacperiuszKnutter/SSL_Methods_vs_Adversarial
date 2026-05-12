@@ -1,5 +1,8 @@
 import torchvision
 from pathlib import Path
+import kagglehub
+import os
+import shutil
 
 ROOT = "./datasets"
 
@@ -26,5 +29,30 @@ def fetch_data_set(dataset_name: str) -> None:
         print(f"[ERROR] Dataset {dataset_name} not found")
 
 
+def fetch_via_kagglehub(dataset_name: str) -> None:
+    dataset_mapping = {
+        "imagenet100": "ambityga/imagenet100"
+    }
+
+    if dataset_name in dataset_mapping:
+        target_path = ROOT.join(dataset_name)
+
+        # Sprawdzamy czy już istnieje, żeby nie pobierać/przenosić dwa razy
+        if os.path.exists(target_path):
+            print(f"[INFO] {dataset_name} already exists in {target_path}")
+            return
+
+        print(f"[DATA] Downloading {dataset_name} to cache...")
+        # Pobieranie do cache
+        downloaded_path = kagglehub.dataset_download(dataset_mapping[dataset_name])
+        print(f"[SUCCESS] {dataset_name} ready in {target_path}")
+    else:
+        print(f"[ERROR] Dataset {dataset_name} not found")
+
+
+
 # Run for cifar for now
-fetch_data_set("cifar10")
+# fetch_data_set("cifar10")
+
+# run for ImageNet-100
+fetch_via_kagglehub("imagenet100")

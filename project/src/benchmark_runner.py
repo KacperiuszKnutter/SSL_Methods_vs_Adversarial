@@ -16,6 +16,8 @@ from solo.data.classification_dataloader import prepare_data as prepare_data_cla
 from solo.utils.knn import WeightedKNNClassifier
 from torchvision.models import resnet50, ResNet50_Weights
 
+import torchvision.models as models
+
 
 class BenchmarkRunner:
     #First-stage benchmark runner.
@@ -83,6 +85,13 @@ class BenchmarkRunner:
         method = self.config["method"].lower()
         print(f"[HUB] Fetching official weights for {method}...")
 
+        dataset = self.config.get("dataset", "cifar10")
+        if dataset == "imagenet100":
+            print("[HUB] Adjusting backbone architecture for ImageNet (7x7 conv1 + MaxPool)")
+            new_backbone = models.resnet50(weights=None).to(self.device)
+            new_backbone.fc = torch.nn.Identity()  # Usuwamy klasyfikator
+            model.backbone = new_backbone.to(self.device)
+
 
         # from official repositories
         #DINO
@@ -90,6 +99,15 @@ class BenchmarkRunner:
             # https://github.com/facebookresearch/dino
             official_model = torch.hub.load('facebookresearch/dino:main', 'dino_resnet50')
             model.backbone.load_state_dict(official_model.state_dict(), strict=False)
+            print("[HUB] DINO weights loaded successfully with standard ImageNet conv1.")
+
+            # state_dict = official_model.state_dict()
+            #if "conv1.weight" in state_dict:
+               # print("[HUB] Skipping conv1.weight due to size mismatch (CIFAR 3x3 vs ImageNet 7x7)")
+                #del state_dict["conv1.weight"]
+
+
+            # model.backbone.load_state_dict(state_dict, strict=False)
 
         elif method ==  "simclr":
             # methods checkpoints no longer available on repositories smh
@@ -139,10 +157,6 @@ class BenchmarkRunner:
             # supports on offical github downloading ckpts
             # https://github.com/facebookresearch/vicreg
             official_model = torch.hub.load('facebookresearch/vicreg:main', 'resnet50')
-            model.backbone.load_state_dict(official_model.state_dict(), strict=False)
-        else:
-            # Fallback dla standardowego ResNet50 (np. SimCLR/Barlow często używa standardu)
-            official_model = torch.hub.load('pytorch/vision:v0.10.0', 'resnet50', pretrained=True)
             model.backbone.load_state_dict(official_model.state_dict(), strict=False)
 
     def create_eval_loader(self) -> DataLoader:
@@ -235,9 +249,8 @@ class BenchmarkRunner:
         embeddings: np.ndarray,
         labels: np.ndarray,
     ) -> Dict[str, Any]:
-        """
-        Delegate embedding-space analysis to FeatureAnalyzer.
-        """
+
+        # Delegate embedding-space analysis to FeatureAnalyzer
         return self.feature_analyzer.analyze(embeddings=embeddings, labels=labels)
 
     def run_knn_eval(

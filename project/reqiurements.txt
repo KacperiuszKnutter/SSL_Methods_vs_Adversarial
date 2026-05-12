@@ -30,3 +30,6 @@ pytorch-lightning==1.9.5
 einops
 wandb
 tensorboard
+
+# for datasets
+kagglehub

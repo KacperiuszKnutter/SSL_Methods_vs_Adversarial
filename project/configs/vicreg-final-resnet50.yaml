@@ -1,7 +1,12 @@
+# batch_size: 256 # Zwiększ do 2048-4096 dla ImageNet (wymaga dużej pamięci VRAM)
+# lr: 0.3 # Skaluj liniowo: lr * (batch_size / 256)
+# crop_size: 32 # Ustaw 224 dla ImageNet / ImageNet-100
+# gaussian_blur: enabled: False # Włącz (True) tylko dla obrazów o wysokiej rozdzielczości (> 64px)
+
 method: vicreg
 dataset: cifar10
 backbone: resnet50
-num_classes: 196
+num_classes: 10
 
 name: vicreg-final-resnet50
 
@@ -20,10 +25,10 @@ cov_loss_weight: 1.0
 eps: 0.0001
 
 max_epochs: 1000
-optimizer: sgd
+optimizer: lars #sgd
 lars: true
-lr: 1.6
-weight_decay: 0.000001
+lr:  0.3 #1.6
+weight_decay: 1e-4 #0.000001
 classifier_lr: 0.5
 exclude_bias_n_norm_lars: true
 accumulate_grad_batches: 1
@@ -38,19 +43,27 @@ warmup_epochs: 10
 lr_decay_steps: null
 
 augmentations:
-  brightness: 0.4
-  contrast: 0.4
-  saturation: 0.2
-  hue: 0.1
-  gaussian_prob: 0.5
-  solarization_prob: 0.0
+  rrc:
+    enabled: True
+    crop_min_scale: 0.2 # Mniej agresywny crop dla 32x32[cite: 13]
+    crop_size: 32
+  color_jitter:
+    prob: 0.8
+  grayscale:
+    prob: 0.2
+  gaussian_blur:
+    enabled: False # Wyłączono blur dla VICReg CIFAR[cite: 13] 0.5 dla image net
+  solarization:
+    prob: 0.1
+  horizontal_flip:
+    prob: 0.5
 
 
 num_large_crops: 2
 num_small_crops: 0
 num_crops_per_aug: [2, 0]
 
-batch_size: 2048
+batch_size:  256 #2048 dla ImageNet
 num_workers: 8
 data_dir: ./datasets
 train_dir: null
@@ -58,9 +71,11 @@ val_dir: null
 
 gpus: "0"
 
-report_dir: ./outputs/reports
-embeddings_dir: ./outputs/embeddings
-checkpoint_dir: ./outputs/checkpoints
+# Ścieżki relatywne względem katalogu głównego
+report_dir: project/models_out/reports
+figures_dir: project/models_out/figures
+embeddings_dir: project/models_out/embeddings
+checkpoint_dir: project/models_out/checkpoints/mine
 
 knn_k: 20
 knn_temperature: 0.1

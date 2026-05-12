@@ -4,11 +4,11 @@
 # gaussian_blur: enabled: False # Włącz (True) tylko dla obrazów o wysokiej rozdzielczości (> 64px)
 
 method: dino
-dataset: cifar10
+dataset: imagenet100
 backbone: resnet50
-num_classes: 10
+num_classes: 100
 
-name: dino-final-resnet50-cifar10
+name: dino-final-resnet50-imagenet100
 
 checkpoint: "pytorch_hub"
 use_projector: false
@@ -18,7 +18,7 @@ backbone_args:
 
 proj_hidden_dim: 2048
 proj_output_dim: 256
-num_prototypes: 4096 # 65536 for ImageNet
+num_prototypes: 65536 #4096 cifar,  65536 for ImageNet
 
 student_temperature: 0.1
 teacher_temperature: 0.04
@@ -53,13 +53,13 @@ augmentations:
   view1:
     rrc:
       enabled: True
-      crop_size: 32
+      crop_size: 224
     gaussian_blur:
       prob: 1.0
   view2:
     rrc:
       enabled: True
-      crop_size: 32
+      crop_size: 224
     gaussian_blur:
       prob: 0.1
     solarization:
@@ -69,11 +69,11 @@ num_large_crops: 2
 num_small_crops: 6
 num_crops_per_aug: [1, 7]
 
-batch_size: 1024
+batch_size: 512 #1024
 num_workers: 8
-data_dir: ./datasets
-train_dir: null
-val_dir: null
+data_dir: ./datasets/imagenet/
+train_dir: ./datasets/imagenet/train
+val_dir: ./datasets/imagenet/val
 
 gpus: "0"
 

@@ -1,0 +1,71 @@
+(.venv) PS C:\Users\kacpe\Dyplom\project> tree /f /a
+|   fetch_data_set.py
+|   main.py
+|   reqiurements.txt
+|   __init__.py
+|   
++---configs
+|       bt-final-resnet50.yaml
+|       bt-test-resnet18.yaml
+|       dino-final-resnet50.yaml
+|       dino-test-resnet18.yaml
+|       simclr-final-resnet50.yaml
+|       simclr-test-resnet18.yaml
+|       simsiam-final-resnet50.yaml
+|       simsiam-test-resnet18.yaml
+|       vicreg-final-resnet50.yaml
+|       vicreg-test-resnet18.yaml
+|       
++---datasets
+|   |   cifar-10-python.tar.gz
+|   |   
+|   \---cifar-10-batches-py
+|           batches.meta
+|           data_batch_1
+|           data_batch_2
+|           data_batch_3
+|           data_batch_4
+|           data_batch_5
+|           readme.html
+|           test_batch
+|           
++---models_out
+|   +---checkpoints
+|   |   |   simclr-resnet50-1x.pth
+|   |   |   simsiam-resnet50-1x.pth.tar
+|   |   |   
+|   |   +---mine
+|   |   \---simsiam-resnet50-1x.pth
+|   |       \---archive
+|   |           |   data.pkl
+|   |           |   version
+|   |           |   
+|   |           \---data
+|   |                   
+|   +---embeddings
+|   +---figures
+|   \---reports
++---notebooks
+|   \---templates
+|           benchmark_report_template.ipynb
+|           model_features_analysis_template.ipynb
+|           
++---src
+|   |   benchmark_runner.py
+|   |   feature_analyzer.py
+|   |   fine_tuner.py
+|   |   model_registry.py
+|   |   model_trainer.py
+|   |   report_builder.py
+|   |   utils.py
+|   |   __init__.py
+|   |   
+|   \---__pycache__
+|           benchmark_runner.cpython-313.pyc
+|           feature_analyzer.cpython-313.pyc
+|           model_registry.cpython-313.pyc
+|           __init__.cpython-313.pyc
+|           
+\---__pycache__
+        main.cpython-313.pyc
+        __init__.cpython-313.pyc
