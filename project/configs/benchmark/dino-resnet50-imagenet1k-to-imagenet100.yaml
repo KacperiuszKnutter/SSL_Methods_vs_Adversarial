@@ -1,0 +1,62 @@
+experiment:
+  name: dino-resnet50-imagenet1k-to-imagenet100-benchmark
+  seed: 42
+  description: Official DINO ResNet50 pretrained on ImageNet-1k, benchmarked on ImageNet100.
+
+model:
+  method: dino
+  backbone: resnet50
+  num_classes: 100
+
+checkpoint:
+  source: official_repo # lub solo_learn
+  path: pytorch_hub # lub sciezka do wlasnego checkpointu w projekcie.
+  hub_repo: facebookresearch/dino:main
+  hub_model: dino_resnet50
+  pretrain_dataset: imagenet1k
+  architecture: resnet50
+  verified: true
+
+outputs:
+  embeddings_dir: ./project/models_out/embeddings
+  report_dir: ./project/models_out/reports
+  figures_dir: ./project/models_out/figures
+  checkpoint_dir: ./project/models_out/checkpoints
+
+benchmark:
+  enabled: true
+
+  dataset: imagenet100
+  num_classes: 100
+
+  data_dir: ./datasets/imagenet100
+  train_dir: train
+  val_dir: val
+
+  batch_size: 256
+  num_workers: 4
+  gpus: "0"
+
+  use_projector: false
+
+  preprocessing:
+    type: imagenet_eval
+    input_size: 224
+    resize_size: 256
+    normalization: imagenet
+
+  knn:
+    k: 20
+    temperature: 0.07
+    distance_fx: cosine
+
+  linear_eval:
+    max_iter: 1000
+    c: 1.0
+    standardize: true
+
+pretrain:
+  enabled: false
+
+finetune:
+  enabled: false

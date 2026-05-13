@@ -52,7 +52,7 @@ def fetch_via_kagglehub(dataset_name: str) -> None:
 
 
 # Run for cifar for now
-# fetch_data_set("cifar10")
+fetch_data_set("cifar10")
 
 # run for ImageNet-100
-fetch_via_kagglehub("imagenet100")
+#fetch_via_kagglehub("imagenet100")

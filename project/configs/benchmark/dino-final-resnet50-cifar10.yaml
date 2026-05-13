@@ -53,7 +53,7 @@ augmentations:
   view1:
     rrc:
       enabled: True
-      crop_size: 32
+      crop_size: #32
     gaussian_blur:
       prob: 1.0
   view2:

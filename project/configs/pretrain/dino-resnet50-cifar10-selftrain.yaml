@@ -1,0 +1,139 @@
+experiment:
+  name: dino-resnet50-cifar10-selftrain
+  seed: 42
+  description: DINO ResNet50 trained from scratch on CIFAR-10 using solo-learn.
+
+model:
+  method: dino
+  backbone: resnet50
+  num_classes: 10
+
+checkpoint:
+  source: none
+  path: null
+  pretrain_dataset: cifar10
+  architecture: resnet50
+  verified: false
+
+outputs:
+  embeddings_dir: ./project/models_out/embeddings
+  report_dir: ./project/models_out/reports
+  figures_dir: ./project/models_out/figures
+  checkpoint_dir: ./project/models_out/checkpoints/mine
+  log_dir: ./project/models_out/logs
+
+pretrain:
+  enabled: true
+
+  dataset: cifar10
+  num_classes: 10
+
+  data_dir: ./datasets
+  train_dir: null
+  val_dir: null
+
+  backbone_args:
+    zero_init_residual: true
+
+  max_epochs: 100
+  batch_size: 256
+  num_workers: 4
+  gpus: "0"
+  devices: 1
+  precision: 32-true
+  log_every_n_steps: 50
+
+  optimizer: adamw
+  lr: 0.0005
+  weight_decay: 0.04
+  weight_decay_end: 0.4
+  classifier_lr: 0.5
+  accumulate_grad_batches: 1
+  extra_optimizer_args: {}
+
+  scheduler: warmup_cosine
+  scheduler_interval: step
+  min_lr: 0.0
+  warmup_start_lr: 0.0
+  warmup_epochs: 10
+  lr_decay_steps: null
+
+  proj_hidden_dim: 2048
+  proj_output_dim: 256
+  num_prototypes: 65536
+
+  student_temperature: 0.1
+  teacher_temperature: 0.04
+  warmup_teacher_temperature: 0.04
+  final_teacher_temperature: 0.07
+  warmup_teacher_temperature_epochs: 30
+
+  base_tau: 0.996
+  final_tau: 1.0
+  momentum_classifier: false
+  center_momentum: 0.9
+
+  num_large_crops: 2
+  num_small_crops: 6
+  num_crops_per_aug: [2, 6]
+
+  augmentations:
+    view1:
+      brightness: 0.4
+      contrast: 0.4
+      saturation: 0.2
+      hue: 0.1
+      gaussian_prob: 1.0
+      solarization_prob: 0.0
+    view2:
+      brightness: 0.4
+      contrast: 0.4
+      saturation: 0.2
+      hue: 0.1
+      gaussian_prob: 0.1
+      solarization_prob: 0.2
+
+  save_checkpoint: true
+  checkpoint_frequency: 10
+  resume_from_checkpoint: null
+
+  online_eval: true
+
+  early_stopping:
+    enabled: false
+    monitor: valid_acc1
+    mode: max
+    patience: 20
+    min_delta: 0.0
+
+benchmark:
+  enabled: true
+
+  dataset: cifar10
+  num_classes: 10
+
+  data_dir: ./datasets
+  train_dir: null
+  val_dir: null
+
+  checkpoint_source: solo_learn
+  checkpoint: null
+
+  batch_size: 256
+  num_workers: 4
+  gpus: "0"
+
+  use_projector: false
+
+  knn:
+    k: 20
+    temperature: 0.07
+    distance_fx: cosine
+
+  linear_eval:
+    max_iter: 1000
+    c: 1.0
+    standardize: true
+
+finetune:
+  enabled: false

@@ -167,19 +167,117 @@ def dispatch_mode(config: dict) -> None:
     else:
         raise ValueError(f"Unknown mode: {mode}")
 
+def build_mode_config(raw_config: Dict[str, Any], mode: str) -> Dict[str, Any]:
+    """
+    Converts section-based YAML config into a flat config expected by:
+    - BenchmarkRunner
+    - ModelTrainer
+    - FineTuner
+
+    YAML structure:
+      experiment:
+      model:
+      checkpoint:
+      outputs:
+      benchmark:
+      pretrain:
+      finetune:
+    """
+
+    experiment_cfg = raw_config.get("experiment", {})
+    model_cfg = raw_config.get("model", {})
+    checkpoint_cfg = raw_config.get("checkpoint", {})
+    outputs_cfg = raw_config.get("outputs", {})
+
+    common: Dict[str, Any] = {}
+
+    # Common model fields: method, backbone, num_classes.
+    common.update(model_cfg)
+
+    # Output paths: embeddings_dir, report_dir, figures_dir, checkpoint_dir, log_dir.
+    common.update(outputs_cfg)
+
+    # Experiment metadata.
+    common["name"] = experiment_cfg.get(
+        "name",
+        f"{model_cfg.get('method', 'model')}-{mode}",
+    )
+    common["seed"] = experiment_cfg.get("seed", 42)
+    common["description"] = experiment_cfg.get("description", "")
+
+    # Checkpoint metadata.
+    if checkpoint_cfg:
+        common["checkpoint_source"] = checkpoint_cfg.get("source")
+        common["checkpoint"] = checkpoint_cfg.get("path")
+        common["pretrain_dataset"] = checkpoint_cfg.get("pretrain_dataset")
+        common["checkpoint_architecture"] = checkpoint_cfg.get("architecture")
+        common["checkpoint_verified"] = checkpoint_cfg.get("verified", False)
+        common["hub_repo"] = checkpoint_cfg.get("hub_repo")
+        common["hub_model"] = checkpoint_cfg.get("hub_model")
+
+    if mode == "benchmark":
+        benchmark_cfg = dict(raw_config.get("benchmark", {}))
+        flat = {**common, **benchmark_cfg}
+
+        # Flatten kNN section.
+        knn_cfg = benchmark_cfg.get("knn", {})
+        flat["knn_k"] = knn_cfg.get("k", 20)
+        flat["knn_temperature"] = knn_cfg.get("temperature", 0.1)
+        flat["knn_distance_fx"] = knn_cfg.get("distance_fx", "cosine")
+
+        # Flatten linear eval section.
+        linear_cfg = benchmark_cfg.get("linear_eval", {})
+        flat["linear_max_iter"] = linear_cfg.get("max_iter", 1000)
+        flat["linear_c"] = linear_cfg.get("c", 1.0)
+        flat["linear_standardize"] = linear_cfg.get("standardize", True)
+
+        # Benchmark-specific checkpoint can override global checkpoint.
+        if benchmark_cfg.get("checkpoint") is not None:
+            flat["checkpoint"] = benchmark_cfg.get("checkpoint")
+
+        if benchmark_cfg.get("checkpoint_source") is not None:
+            flat["checkpoint_source"] = benchmark_cfg.get("checkpoint_source")
+
+        flat["mode"] = "benchmark"
+        return flat
+
+    if mode == "train":
+        pretrain_cfg = dict(raw_config.get("pretrain", {}))
+        flat = {**common, **pretrain_cfg}
+
+        flat["mode"] = "train"
+        return flat
+
+    if mode == "finetune":
+        finetune_cfg = dict(raw_config.get("finetune", {}))
+        flat = {**common, **finetune_cfg}
+
+        # Fine-tune checkpoint can override global checkpoint.
+        if finetune_cfg.get("checkpoint") is not None:
+            flat["checkpoint"] = finetune_cfg.get("checkpoint")
+
+        if finetune_cfg.get("checkpoint_source") is not None:
+            flat["checkpoint_source"] = finetune_cfg.get("checkpoint_source")
+
+        flat["mode"] = "finetune"
+        return flat
+
+    raise ValueError(f"Unsupported mode: {mode}")
+
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    raw_config = load_config(args.config)
+    mode = resolve_mode(args)
+
+    config = build_mode_config(raw_config, mode)
     config = apply_cli_overrides(config, args)
 
     print("Starting the pipeline!")
     print(config)
 
-    # actual experiment
     dispatch_mode(config)
-
 
 if __name__ == "__main__":
     main()

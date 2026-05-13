@@ -1,0 +1,122 @@
+experiment:
+  name: dino-resnet50-imagenet1k-to-cars-finetune
+  seed: 42
+  description: Fine-tuning official DINO ResNet50 pretrained on ImageNet-1k on Stanford Cars.
+
+model:
+  method: dino
+  backbone: resnet50
+  num_classes: 196
+
+checkpoint:
+  source: official_repo
+  path: pytorch_hub
+  hub_repo: facebookresearch/dino:main
+  hub_model: dino_resnet50
+  pretrain_dataset: imagenet1k
+  architecture: resnet50
+  verified: true
+
+outputs:
+  embeddings_dir: ./project/models_out/embeddings
+  report_dir: ./project/models_out/reports
+  figures_dir: ./project/models_out/figures
+  checkpoint_dir: ./project/models_out/checkpoints/finetune
+  log_dir: ./project/models_out/logs
+
+pretrain:
+  enabled: false
+
+benchmark:
+  enabled: true
+
+  dataset: cars
+  num_classes: 196
+
+  data_dir: ./datasets/cars
+  train_dir: train
+  val_dir: val
+
+  checkpoint_source: finetuned
+  checkpoint: ./project/models_out/checkpoints/finetune/dino-resnet50-imagenet1k-to-cars-finetune/best.ckpt
+
+  batch_size: 128
+  num_workers: 4
+  gpus: "0"
+
+  use_projector: false
+
+  preprocessing:
+    type: imagenet_eval
+    input_size: 224
+    resize_size: 256
+    normalization: imagenet
+
+  knn:
+    k: 20
+    temperature: 0.07
+    distance_fx: cosine
+
+  linear_eval:
+    max_iter: 1000
+    c: 1.0
+    standardize: true
+
+finetune:
+  enabled: true
+
+  dataset: cars
+  num_classes: 196
+
+  data_dir: ./datasets/cars
+  train_dir: train
+  val_dir: val
+
+  checkpoint_source: official_repo
+  checkpoint: pytorch_hub
+  pretrain_dataset: imagenet1k
+
+  remove_projector: true
+  freeze_backbone: false
+  train_classifier: true
+
+  batch_size: 64
+  num_workers: 4
+  gpus: "0"
+  devices: 1
+  precision: 32-true
+
+  max_epochs: 50
+
+  optimizer: sgd
+  lr: 0.001
+  weight_decay: 0.0001
+  momentum: 0.9
+
+  scheduler: cosine
+  min_lr: 0.0
+  warmup_epochs: 0
+
+  preprocessing:
+    train:
+      type: imagenet_train
+      input_size: 224
+      random_resized_crop: true
+      horizontal_flip: true
+      normalization: imagenet
+    eval:
+      type: imagenet_eval
+      input_size: 224
+      resize_size: 256
+      normalization: imagenet
+
+  save_checkpoint: true
+  checkpoint_frequency: 5
+  resume_from_checkpoint: null
+
+  early_stopping:
+    enabled: true
+    monitor: val_acc
+    mode: max
+    patience: 10
+    min_delta: 0.0
