@@ -12,10 +12,10 @@ from project.src.report_builder import  BenchmarkReportBuilder
 # How to use
 # calls for benchmarks for supported methods:
 # python -m project.main --b --config project/configs/dino-final-resnet50-cifar10-cifar10.yaml
-# python -m project.main --b --config project/configs/bt-final-resnet50.yaml
-# python -m project.main --b --config project/configs/simclr-final-resnet50.yaml
-# python -m project.main --b --config project/configs/simsiam-final-resnet50.yaml
-# python -m project.main --b --config project/configs/vicreg-final-resnet50.yaml
+# python -m project.main --b --config project/configs/bt-resnet50-imagenet1k-to-cifar10.yaml
+# python -m project.main --b --config project/configs/simclr-resnet50-imagenet1k-to-cifar10.yaml
+# python -m project.main --b --config project/configs/simsiam-resnet50-imagenet1k-to-cifar10.yaml
+# python -m project.main --b --config project/configs/vicreg-resnet50-imagenet1k-to-cifar10.yaml
 
 # call for training: python main.py --t --method barlow_twins --dataset cifar10 --epochs 100
 # call for benchmark: python main.py --b --method simclr --dataset cars --checkpoint ./ckpt.ckpt

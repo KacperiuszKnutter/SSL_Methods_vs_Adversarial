@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
+import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from sklearn.linear_model import LogisticRegression
@@ -15,9 +17,15 @@ from project.src.feature_analyzer import FeatureAnalyzer
 from solo.data.classification_dataloader import prepare_data as prepare_data_classification
 from solo.utils.knn import WeightedKNNClassifier
 from torchvision.models import resnet50, ResNet50_Weights
-
+from solo.utils.auto_umap import OfflineUMAP
 import torchvision.models as models
 
+from project.src.report_builder import BenchmarkReportBuilder
+
+import matplotlib.pyplot as plt
+import umap
+import seaborn as sns
+import os
 
 class BenchmarkRunner:
     #First-stage benchmark runner.
@@ -32,7 +40,7 @@ class BenchmarkRunner:
         self.config = config
         self.device = self._resolve_device(config)
         self.feature_analyzer = FeatureAnalyzer()
-
+        self.umap = OfflineUMAP()
         self.feature_model : Optional[torch.nn.Module] = None
 
     @staticmethod
@@ -123,11 +131,17 @@ class BenchmarkRunner:
         # fetches weights of fully pretrained models with resnet50 architecture from pytorch hub
         method = self.config["method"].lower()
         print(f"[HUB] Fetching official weights for {method}...")
+
+        # isolate cache for each method to avoid collisions
+        import os
+        os.environ["TORCH_HOME"] = f"./.torch_cache/{method}"
+
         # from official repositories
         #DINO
         if method == "dino":
             # https://github.com/facebookresearch/dino
             official_model = torch.hub.load('facebookresearch/dino:main', 'dino_resnet50')
+            official_model.fc = torch.nn.Identity()
             self.feature_model = official_model.to(self.device).eval()
             print("[HUB] DINO official feature model loaded directly.")
             return
@@ -135,6 +149,7 @@ class BenchmarkRunner:
         elif method == "barlow_twins":
             # https://github.com/facebookresearch/barlowtwins
             official_model = torch.hub.load('facebookresearch/barlowtwins:main', 'resnet50')
+            official_model.fc = torch.nn.Identity()
             self.feature_model = official_model.to(self.device).eval()
             print("[HUB] Barlow Twins official feature model loaded directly.")
             return
@@ -142,6 +157,7 @@ class BenchmarkRunner:
             # supports on offical github downloading ckpts
             # https://github.com/facebookresearch/vicreg
             official_model = torch.hub.load('facebookresearch/vicreg:main', 'resnet50')
+            official_model.fc = torch.nn.Identity()
             self.feature_model = official_model.to(self.device).eval()
             print("[HUB] VICReg official feature model loaded directly.")
             return
@@ -263,19 +279,24 @@ class BenchmarkRunner:
 
     def create_eval_loader(self) -> DataLoader:
         dataset = self.config["dataset"]
-        data_dir = self.config.get("data_dir", "./datasets")
-        train_dir = self.config.get("train_dir", None)
-        val_dir = self.config.get("val_dir", None)
+        data_dir = Path(self.config.get("data_dir", "./datasets"))
+        train_dir = self.config.get("train_dir")
+        val_dir = self.config.get("val_dir")
+
+        # Bezpieczne sklejanie ścieżek
+        train_path = str(data_dir / train_dir) if train_dir else str(data_dir)
+        val_path = str(data_dir / val_dir) if val_dir else str(data_dir)
+
         batch_size = self.config.get("batch_size", 256)
         num_workers = self.config.get("num_workers", 4)
 
+        # Używamy argumentów nazwanych!
         _, val_loader = prepare_data_classification(
-            dataset,
-            data_dir,
-            train_dir,
-            val_dir,
-            batch_size,
-            num_workers,
+            dataset=dataset,
+            train_data_path=train_path,
+            val_data_path=val_path,
+            batch_size=batch_size,
+            num_workers=num_workers,
         )
 
         self._log_dataset_info(val_loader, split_name="eval")
@@ -358,23 +379,27 @@ class BenchmarkRunner:
 
     def create_train_loader(self) -> DataLoader:
         dataset = self.config["dataset"]
-        data_dir = self.config.get("data_dir", "./datasets")
-        train_dir = self.config.get("train_dir", None)
-        val_dir = self.config.get("val_dir", None)
+        data_dir = Path(self.config.get("data_dir", "./datasets"))
+        train_dir = self.config.get("train_dir")
+        val_dir = self.config.get("val_dir")
+
+        # Bezpieczne sklejanie ścieżek
+        train_path = str(data_dir / train_dir) if train_dir else str(data_dir)
+        val_path = str(data_dir / val_dir) if val_dir else str(data_dir)
+
         batch_size = self.config.get("batch_size", 256)
         num_workers = self.config.get("num_workers", 4)
 
+        # Używamy argumentów nazwanych!
         train_loader, _ = prepare_data_classification(
-            dataset,
-            data_dir,
-            train_dir,
-            val_dir,
-            batch_size,
-            num_workers,
+            dataset=dataset,
+            train_data_path=train_path,
+            val_data_path=val_path,
+            batch_size=batch_size,
+            num_workers=num_workers,
         )
 
         self._log_dataset_info(train_loader, split_name="train")
-
         return train_loader
 
     def save_embeddings(self,embeddings: np.ndarray,labels: np.ndarray, split_name: str = "eval" ) -> Dict[str, str]:
@@ -463,6 +488,111 @@ class BenchmarkRunner:
             "c": c_value,
         }
 
+    def compute_dense_metrics(self,model : torch.nn.Module, dataloader: DataLoader, num_batches: int = 5) -> Dict[str, float]:
+        print("[DENSE METRICS] Computing spatial metrics...")
+        dense_features_list = []
+
+        def hook(module, input, output):
+            # Zapisujemy wyjście [B, 2048, 7, 7] odpinając je od grafu obliczeniowego
+            dense_features_list.append(output.detach())
+
+        hook_handle = None
+        # Szukamy ostatniej warstwy splotowej (zazwyczaj layer4 w ResNet50)
+        if model is None:
+            # og take self.feature_model
+            for name, module in self.feature_model.named_modules():
+                if name == 'layer4' or name == 'network.layer4':
+                    hook_handle = module.register_forward_hook(hook)
+                    break
+            self.feature_model.eval()
+        else:
+            for name, module in model.named_modules():
+                # DODANO 'backbone.layer4' dla kompatybilności z solo-learn
+                if name in ['layer4', 'network.layer4', 'backbone.layer4']:
+                    hook_handle = module.register_forward_hook(hook)
+                    break
+            model.eval()
+
+        if hook_handle is None:
+            print("[WARNING] Could not attach hook to 'layer4'. Skipping dense metrics.")
+            return {}
+
+
+        total_spatial_redundancy = 0.0
+        total_dense_similarity = 0.0
+        pair_count = 0
+        img_count = 0
+
+        with torch.no_grad():
+            for i, (images, _) in enumerate(dataloader):
+                if i >= num_batches:
+                    break  # Liczymy tylko dla kilku batchy, by nie tracić czasu
+
+                images = images.to(self.device)
+                dense_features_list.clear()
+
+                # Przepuszczamy przez sieć (Hook złapie dense features)
+                if model is None:
+                    self.feature_model(images)
+                else:
+                    model(images)
+
+                if not dense_features_list:
+                    continue
+
+                features = dense_features_list[0]  # Kształt: [B, 2048, 7, 7]
+                B, C, H, W = features.shape
+                num_patches = H * W  # Zwykle 49 (7x7)
+
+                # Zmieniamy kształt do [B, 49, 2048]
+                features = features.view(B, C, num_patches).transpose(1, 2)
+
+                # L2 Normalizacja kosinusowa dla każdej łatki z osobna
+                features = torch.nn.functional.normalize(features, p=2, dim=2)
+
+                # =======================================================
+                # METRYKA 1: Patch Diversity / Spatial Redundancy
+                # Zróżnicowanie łatek na tym SAMYM obrazku.
+                # =======================================================
+                sim_matrix_self = torch.bmm(features, features.transpose(1, 2))  # [B, 49, 49]
+
+                # Maskujemy przekątną (bo łatka zawsze pasuje do samej siebie na 100%)
+                mask = ~torch.eye(num_patches, dtype=torch.bool, device=self.device)
+
+                # Liczymy średnie podobieństwo różnych łatek do siebie (im więcej, tym gorzej/większe rozmycie)
+                off_diag_sims = sim_matrix_self[:, mask]
+                batch_spatial_redundancy = off_diag_sims.mean().item()
+
+                total_spatial_redundancy += batch_spatial_redundancy * B
+                img_count += B
+
+                # =======================================================
+                # METRYKA 2: Dense Similarity Score
+                # Kosinusowe dopasowanie łatek między RÓŻNYMI losowymi obrazkami.
+                # =======================================================
+                # Łączymy obrazki w pary (0 z 1, 2 z 3 itd.)
+                for j in range(0, B - 1, 2):
+                    feat_A = features[j:j + 1]  # [1, 49, 2048]
+                    feat_B = features[j + 1:j + 2]  # [1, 49, 2048]
+
+                    sim_matrix_pair = torch.bmm(feat_A, feat_B.transpose(1, 2))  # [1, 49, 49]
+
+                    # Szukamy "najlepszego przyjaciela" w obrazie B dla każdej łatki z A
+                    max_sims, _ = sim_matrix_pair.max(dim=2)
+
+                    total_dense_similarity += max_sims.mean().item()
+                    pair_count += 1
+
+        hook_handle.remove()  # Sprzątamy
+
+        result = {}
+        if img_count > 0:
+            result["spatial_patch_redundancy"] = total_spatial_redundancy / img_count
+        if pair_count > 0:
+            result["mean_dense_similarity_score"] = total_dense_similarity / pair_count
+
+        return result
+
     def run(self) -> Dict[str, Any]:
         # first create model
         #optionally load checkpoint
@@ -470,12 +600,24 @@ class BenchmarkRunner:
         # extract & save embeddings
         # analyze features
 
-        model = self.create_model()
-        if self.config.get("checkpoint") == "pytorch_hub":
+        source = self.config.get("checkpoint_source")
+        path = self.config.get("checkpoint")
+
+        if path == "pytorch_hub" or source == "official_repo":
             model = None
             self._load_from_hub()
         else:
+            # Create a solo-learn based model on checkpoints downloaded as .pth/.ckpt
+            # we need to prevent from solo-learn to changing the kernel filters to 3x3 for smaller datasets
+            smaller_sets = ["cifar10", "cifar100","stl10"]
+            old_dataset = self.config["dataset"]
+            if self.config["dataset"] in smaller_sets:
+                # workaround to create proper kernels for now
+                self.config["dataset"] = "imagenet100"
+
             model = self.create_model()
+            # save it back as it was
+            self.config["dataset"] = old_dataset
             self.load_checkpoint(model)
 
         use_projector = bool(self.config.get("use_projector", False))
@@ -502,6 +644,37 @@ class BenchmarkRunner:
 
         analysis_result = self.run_feature_analysis(eval_embeddings, eval_labels)
 
+        num_classes = self.config.get("benchmark", {}).get("num_classes", 100)
+
+        # Opcjonalny przyrostek dla nazwy pliku, jeśli badamy projektor
+        proj_suffix = "_with_projector" if use_projector else "_backbone_only"
+
+        if path =="pytorch_hub" or source == "official_repo":
+
+            run_name = self.config.get("name", "benchmark_run")
+
+            figures_dir = Path(self.config.get("figures_dir", "project/models_out/figures")) / run_name
+
+            figures_dir.mkdir(parents=True, exist_ok=True)
+
+            filename_train = f"{run_name}_umap_train.pdf"
+            filepath_train = figures_dir / filename_train
+
+            filename_eval = f"{run_name}_umap_eval.pdf"
+            filepath_eval = figures_dir / filename_eval
+
+            curr_model = self.feature_model if not model else model
+            self.umap.plot(self.device,curr_model, train_loader, filepath_train )
+            self.umap.plot(self.device,curr_model, eval_loader, filepath_eval)
+
+        else:
+            self.plot_umap_projection(
+                features=eval_embeddings,
+                labels=eval_labels,
+                num_classes=num_classes,
+                project_suffix=proj_suffix
+            )
+
         knn_result = self.run_knn_eval(
             train_embeddings=train_embeddings,
             train_labels=train_labels,
@@ -516,6 +689,9 @@ class BenchmarkRunner:
             test_labels=eval_labels,
         )
 
+        eval_loader = self.create_eval_loader()
+        dense_metrics = self.compute_dense_metrics(model, eval_loader, num_batches=10)
+
         result = {
             "method": self.config["method"],
             "dataset": self.config["dataset"],
@@ -529,16 +705,81 @@ class BenchmarkRunner:
             "analysis": analysis_result,
             "knn_eval": knn_result,
             "linear_eval": linear_result,
+            "dense_metrics": dense_metrics
         }
 
         return result
 
+
+
+    def plot_umap_projection(self, features, labels, num_classes, project_suffix="backbone_only"):
+        print("[ReportBuilder] UMAP projection...")
+
+        # Redukcja wymiarowości
+        # Zostawiłem metrykę 'cosine', ponieważ dla cech z modeli SSL jest ona
+        # znacznie lepsza niż domyślna Euklidesowa używana w surowym solo-learn
+        reducer = umap.UMAP(n_neighbors=15, min_dist=0.1, n_components=2, metric='cosine', random_state=42)
+        embedding = reducer.fit_transform(features)
+
+        # load data into df
+        df = pd.DataFrame()
+        df["feat_1"] = embedding[:, 0]
+        df["feat_2"] = embedding[:, 1]
+        df["Y"] = labels
+
+        # figsize
+        plt.figure(figsize=(9, 9))
+
+        # pallet depends on num of classes
+        if num_classes <= 10:
+            palette_name = "tab10"
+        else:
+            palette_name = "husl"
+
+        # Scatterplot
+        ax = sns.scatterplot(
+            x="feat_1",
+            y="feat_2",
+            hue="Y",
+            palette=sns.color_palette(palette_name, num_classes),
+            data=df,
+            legend="full",
+            alpha=0.3,  # To daje efekt chmury przenikających się kropek
+        )
+
+        # Ukrywanie etykiet i osi (styl solo-learn)
+        ax.set(xlabel="", ylabel="", xticklabels=[], yticklabels=[])
+        ax.tick_params(left=False, right=False, bottom=False, top=False)
+
+        # fit legends
+        if num_classes > 100:
+            anchor = (0.5, 1.8)
+        else:
+            anchor = (0.5, 1.35)
+
+        plt.legend(loc="upper center", bbox_to_anchor=anchor, ncol=math.ceil(num_classes / 10))
+
+        method_name = self.config["method"]
+        dataset_name = self.config["dataset"]
+
+        title = f"UMAP - {method_name} on {dataset_name} ({project_suffix})"
+        plt.title(title, fontsize=14, pad=20)
+
+        # apply layout
+        plt.tight_layout()
+
+        # save
+        run_name = self.config.get("name", "benchmark_run")
+        figures_dir = Path(self.config.get("figures_dir", "project/models_out/figures")) / run_name
+        figures_dir.mkdir(parents=True, exist_ok=True)
+
+        filename = f"{method_name}_{dataset_name}_{project_suffix}_umap.png"
+        filepath = figures_dir / filename
+
+        # do not cut the legend
+        plt.savefig(filepath, dpi=300, bbox_inches='tight')
+        plt.close()
+        print(f"[UMAP] UMAP saved as: {filename}")
+
     # TODO:
     # implement a method for iterating over checkpoints of a given method to check how embeddigins change every iteration.
-
-    # state_dict = official_model.state_dict()
-    # if "conv1.weight" in state_dict:
-    # print("[HUB] Skipping conv1.weight due to size mismatch (CIFAR 3x3 vs ImageNet 7x7)")
-    # del state_dict["conv1.weight"]
-
-    # model.backbone.load_state_dict(state_dict, strict=False)

@@ -8,6 +8,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+import cv2
+import torch
+import torch.nn.functional as F
+
+
 class BenchmarkReportBuilder:
     def __init__(self, config: Dict[str, Any]):
         self.config = config
@@ -35,6 +40,12 @@ class BenchmarkReportBuilder:
         saved["metrics_plot"] = str(self.plot_eval_metrics(result))
         saved["summary_txt"] = str(self.save_summary_txt(result))
 
+        heatmap_path = self.plot_correlation_heatmap(result)
+        if heatmap_path:
+            saved["correlation_heatmap"] = str(heatmap_path)
+
+        saved["summary_txt"] = str(self.save_summary_txt(result))
+
         return saved
 
     def save_json(self, result: Dict[str, Any]) -> Path:
@@ -49,40 +60,78 @@ class BenchmarkReportBuilder:
         basic = result["analysis"]["basic_statistics"]
         svd = result["analysis"]["svd"]
         pca = result["analysis"]["pca"]
+        advanced = result["analysis"].get("advanced_metrics", {})
         knn = result.get("knn_eval", {})
         linear = result.get("linear_eval", {})
 
+        dense = result.get("dense_metrics", {})
+        dense_sim = dense.get("mean_dense_similarity_score", "N/A")
+        spatial_red = dense.get("spatial_patch_redundancy", "N/A")
+
         text = f"""
-Benchmark summary
+        Benchmark summary
 
-Method: {result.get("method")}
-Dataset: {result.get("dataset")}
-Checkpoint: {result.get("checkpoint")}
-Use projector: {result.get("use_projector")}
+        Method: {result.get("method")}
+        Dataset: {result.get("dataset")}
+        Checkpoint: {result.get("checkpoint")}
+        Use projector: {result.get("use_projector")}
 
-Train samples: {result.get("num_train_samples")}
-Eval samples: {result.get("num_eval_samples")}
-Embedding dim: {result.get("embedding_dim")}
+        Train samples: {result.get("num_train_samples")}
+        Eval samples: {result.get("num_eval_samples")}
+        Embedding dim: {result.get("embedding_dim")}
 
-kNN Acc@1: {knn.get("acc1")}
-kNN Acc@5: {knn.get("acc5")}
-Linear accuracy: {linear.get("accuracy")}
+        kNN Acc@1: {knn.get("acc1")}
+        kNN Acc@5: {knn.get("acc5")}
+        Linear accuracy: {linear.get("accuracy")}
 
-Active dimensions: {basic.get("active_dimensions")}
-Dead dimensions: {basic.get("dead_dimensions")}
-Dead dimension ratio: {basic.get("dead_dimension_ratio")}
+        Active dimensions: {basic.get("active_dimensions")}
+        Dead dimensions: {basic.get("dead_dimensions")}
+        Dead dimension ratio: {basic.get("dead_dimension_ratio")}
 
-Effective rank: {svd.get("effective_rank")}
-SVD top-1 energy: {svd.get("energy_ratio_top_1")}
-SVD top-5 energy: {svd.get("energy_ratio_top_5")}
-SVD top-10 energy: {svd.get("energy_ratio_top_10")}
+        Effective rank: {svd.get("effective_rank")}
+        SVD top-1 energy: {svd.get("energy_ratio_top_1")}
+        SVD top-5 energy: {svd.get("energy_ratio_top_5")}
+        SVD top-10 energy: {svd.get("energy_ratio_top_10")}
 
-PCA components for 80% variance: {pca.get("components_for_80_variance")}
-PCA components for 90% variance: {pca.get("components_for_90_variance")}
-PCA components for 95% variance: {pca.get("components_for_95_variance")}
-""".strip()
+        Feature Redundancy: {advanced.get("redundancy")}
+        Feature Uniformity: {advanced.get("uniformity")}
+
+        PCA components used: {pca.get("n_components")}
+        PCA components for 80% variance: {pca.get("components_for_80_variance")}
+        PCA components for 90% variance: {pca.get("components_for_90_variance")}
+        PCA components for 95% variance: {pca.get("components_for_95_variance")}
+        
+        --- Dense Spatial Analysis (7x7x2048) ---
+        Mean Dense Similarity: {dense_sim}
+        Spatial Patch Redundancy: {spatial_red}
+        ----------------------------------------
+        
+        """.strip()
 
         path.write_text(text, encoding="utf-8")
+        return path
+
+    def plot_correlation_heatmap(self, result: Dict[str, Any]) -> Optional[Path]:
+        analysis = result.get("analysis", {})
+        corr_matrix = analysis.get("advanced_metrics", {}).get("correlation_matrix_sample")
+
+        if not corr_matrix:
+            return None
+
+        corr_matrix = np.asarray(corr_matrix)
+        path = self.figure_dir / "correlation_heatmap.png"
+
+        plt.figure(figsize=(7, 6))
+        # Używamy vmin i vmax żeby uwypuklić szum poza przekątną
+        im = plt.imshow(corr_matrix, cmap='viridis', vmin=-0.3, vmax=0.3)
+        plt.colorbar(im, label="Pearson Correlation")
+        plt.title(f"Feature Correlation Heatmap (Top 100 dims) - {self.run_name}")
+        plt.xlabel("Feature Index")
+        plt.ylabel("Feature Index")
+        plt.tight_layout()
+        plt.savefig(path, dpi=200)
+        plt.close()
+
         return path
 
     def plot_pca_2d(self, result: Dict[str, Any]) -> Optional[Path]:
@@ -147,11 +196,13 @@ PCA components for 95% variance: {pca.get("components_for_95_variance")}
         knn = result.get("knn_eval", {})
         linear = result.get("linear_eval", {})
 
-        labels = ["kNN Acc@1", "kNN Acc@5", "Linear Acc"]
+        labels = ["kNN Acc@1", "kNN Acc@5", "Linear Acc "]
+        # solo learn linear metric returns lin acc in range 0.0 - 1.0
+        linear_result = float(linear.get("accuracy", 0.0)) * 100.0
         values = [
             float(knn.get("acc1", 0.0)),
             float(knn.get("acc5", 0.0)),
-            float(linear.get("accuracy", 0.0)),
+            linear_result,
         ]
 
         path = self.figure_dir / "eval_metrics.png"

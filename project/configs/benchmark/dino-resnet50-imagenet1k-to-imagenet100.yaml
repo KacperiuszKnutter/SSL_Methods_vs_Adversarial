@@ -7,6 +7,16 @@ model:
   method: dino
   backbone: resnet50
   num_classes: 100
+  proj_hidden_dim: 2048
+  proj_output_dim: 256
+  num_prototypes: 65536
+  backbone_args:
+    zero_init_residual: true
+#  optimizer: lars
+#  max_epochs: 100
+#  lr: 0.3
+#  weight_decay: 1e-4
+#  classifier_lr: 0.1
 
 checkpoint:
   source: official_repo # lub solo_learn
@@ -29,7 +39,7 @@ benchmark:
   dataset: imagenet100
   num_classes: 100
 
-  data_dir: ./datasets/imagenet100
+  data_dir: ./datasets/imagenet
   train_dir: train
   val_dir: val
 

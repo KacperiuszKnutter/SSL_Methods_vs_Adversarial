@@ -1,0 +1,73 @@
+experiment:
+  name: bt-resnet50-imagenet1k-to-imagenet100-benchmark
+  seed: 42
+  description: Official BarlowTwins ResNet50 pretrained on ImageNet-1k, benchmarked on ImageNet100.
+
+model:
+  method: barlow_twins
+  backbone: resnet50
+  num_classes: 100
+  proj_hidden_dim: 2048
+  proj_output_dim: 8192
+  lamb: 0.005
+  scale_loss: 0.1
+  backbone_args:
+    zero_init_residual: true
+#  optimizer: lars
+#  max_epochs: 100
+#  lr: 0.3
+#  weight_decay: 1e-4
+#  classifier_lr: 0.1
+
+checkpoint:
+  source: official_repo # lub solo_learn
+  path: pytorch_hub # lub sciezka do wlasnego checkpointu w projekcie.
+  hub_repo: facebookresearch/barlowtwins:main
+  hub_model: resnet_50
+  pretrain_dataset: imagenet1k
+  architecture: resnet50
+  verified: true
+
+outputs:
+  embeddings_dir: ./project/models_out/embeddings
+  report_dir: ./project/models_out/reports
+  figures_dir: ./project/models_out/figures
+  checkpoint_dir: ./project/models_out/checkpoints
+
+benchmark:
+  enabled: true
+
+  dataset: imagenet100
+  num_classes: 100
+
+  data_dir: ./datasets/imagenet
+  train_dir: train
+  val_dir: val
+
+  batch_size: 256 # normally for pre-train --> 2048 but for extraction and benchmarking we can lower for weaker GPUs
+  num_workers: 4
+  gpus: "0"
+
+  use_projector: false
+
+  preprocessing:
+    type: imagenet_eval
+    input_size: 224
+    resize_size: 256
+    normalization: imagenet
+
+  knn:
+    k: 20
+    temperature: 0.07
+    distance_fx: cosine
+
+  linear_eval:
+    max_iter: 1000
+    c: 1.0
+    standardize: true
+
+pretrain:
+  enabled: false
+
+finetune:
+  enabled: false

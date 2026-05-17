@@ -33,3 +33,10 @@ tensorboard
 
 # for datasets
 kagglehub
+
+# opencv
+opencv-python
+
+# visualisation
+umap-learn
+seaborn

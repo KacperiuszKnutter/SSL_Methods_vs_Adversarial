@@ -1,0 +1,72 @@
+experiment:
+  name: simsiam-resnet50-imagenet1k-to-cifar10-benchmark
+  seed: 42
+  description: Official simsiam ResNet50 pretrained on ImageNet-1k, benchmarked on cifar10.
+
+model:
+  method: simsiam
+  backbone: resnet50
+  num_classes: 10
+  proj_hidden_dim: 2048
+  proj_output_dim: 2048
+  pred_hidden_dim: 512
+  backbone_args:
+    zero_init_residual: true
+#  optimizer: lars
+#  max_epochs: 100
+#  lr: 0.3
+#  weight_decay: 1e-4
+#  classifier_lr: 0.1
+
+checkpoint:
+  source: solo_learn # lub official_repo
+  path: ./project/models_out/checkpoints/simsiam-resnet50-1x.pth.tar # lub sciezka do wlasnego checkpointu w projekcie.
+  hub_repo: null
+  hub_model: null
+  pretrain_dataset: imagenet1k
+  architecture: resnet50
+  verified: true
+
+outputs:
+  embeddings_dir: ./project/models_out/embeddings
+  report_dir: ./project/models_out/reports
+  figures_dir: ./project/models_out/figures
+  checkpoint_dir: ./project/models_out/checkpoints
+
+benchmark:
+  enabled: true
+
+  dataset: cifar10
+  num_classes: 10
+
+  data_dir: ./datasets/cifar-10-batches-py/
+  train_dir: null
+  val_dir: null
+
+  batch_size: 256
+  num_workers: 4
+  gpus: "0"
+
+  use_projector: false
+
+  preprocessing:
+    type: imagenet_eval
+    input_size: 224 # need to resize the images
+    resize_size: 256
+    normalization: imagenet
+
+  knn:
+    k: 20
+    temperature: 0.07
+    distance_fx: cosine
+
+  linear_eval:
+    max_iter: 1000
+    c: 1.0
+    standardize: true
+
+pretrain:
+  enabled: false
+
+finetune:
+  enabled: false
