@@ -168,21 +168,16 @@ def dispatch_mode(config: dict) -> None:
         raise ValueError(f"Unknown mode: {mode}")
 
 def build_mode_config(raw_config: Dict[str, Any], mode: str) -> Dict[str, Any]:
-    """
-    Converts section-based YAML config into a flat config expected by:
-    - BenchmarkRunner
-    - ModelTrainer
-    - FineTuner
+    # flattens given yaml structure
+    # YAML structure:
+    #   experiment:
+    #   model:
+    #   checkpoint:
+    #   outputs:
+    #   benchmark:
+    #   pretrain:
+    #   finetune:
 
-    YAML structure:
-      experiment:
-      model:
-      checkpoint:
-      outputs:
-      benchmark:
-      pretrain:
-      finetune:
-    """
 
     experiment_cfg = raw_config.get("experiment", {})
     model_cfg = raw_config.get("model", {})

@@ -9,7 +9,7 @@ ROOT = "./datasets"
 #auxiliary script for fetching neccesary datasets
 
 def fetch_data_set(dataset_name: str) -> None:
-    # Mapowanie nazw na klasy torchvision
+    # map names for torchvis
     dataset_classes = {
         "cifar10": torchvision.datasets.CIFAR10,
         "cifar100": torchvision.datasets.CIFAR100,
@@ -37,13 +37,13 @@ def fetch_via_kagglehub(dataset_name: str) -> None:
     if dataset_name in dataset_mapping:
         target_path = ROOT.join(dataset_name)
 
-        # Sprawdzamy czy już istnieje, żeby nie pobierać/przenosić dwa razy
+        # see if already exists
         if os.path.exists(target_path):
             print(f"[INFO] {dataset_name} already exists in {target_path}")
             return
 
         print(f"[DATA] Downloading {dataset_name} to cache...")
-        # Pobieranie do cache
+        # download to cache
         downloaded_path = kagglehub.dataset_download(dataset_mapping[dataset_name])
         print(f"[SUCCESS] {dataset_name} ready in {target_path}")
     else:

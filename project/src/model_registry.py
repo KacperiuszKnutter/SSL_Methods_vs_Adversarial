@@ -18,16 +18,16 @@ from solo.methods.base import BaseMethod, BaseMomentumMethod
 
 
 class ModelRegistry:
-    """
-    Registry for supported SSL methods based on solo-learn.
 
-    Responsibilities:
-    - keep mapping from method name to concrete solo-learn class
-    - validate if method is supported
-    - build OmegaConf config in solo-learn format
-    - detect momentum-based methods
-    - instantiate the final model
-    """
+    # Registry for supported SSL methods based on solo-learn
+    #
+    #
+    # keep mapping from method name to concrete solo-learn class
+    # validate if method is supported
+    # build OmegaConf config in solo-learn format
+    # detect momentum-based methods
+    # instantiate the final model
+
 
     _REGISTRY: Dict[str, Type] = {
         "barlow_twins": BarlowTwins,

@@ -122,7 +122,7 @@ class BenchmarkReportBuilder:
         path = self.figure_dir / "correlation_heatmap.png"
 
         plt.figure(figsize=(7, 6))
-        # Używamy vmin i vmax żeby uwypuklić szum poza przekątną
+        # use vmin i vmax to place noise everywhere except on diagonal
         im = plt.imshow(corr_matrix, cmap='viridis', vmin=-0.3, vmax=0.3)
         plt.colorbar(im, label="Pearson Correlation")
         plt.title(f"Feature Correlation Heatmap (Top 100 dims) - {self.run_name}")

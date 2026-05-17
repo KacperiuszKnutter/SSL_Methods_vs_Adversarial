@@ -186,7 +186,7 @@ class BenchmarkRunner:
             for k, v in state_dict.items():
                 k_clean = k.replace("module.", "")
 
-                # Różne checkpointy SimCLR mają różne prefiksy.
+                # look for different prefixes .
                 possible_prefixes = [
                     "encoder.",
                     "backbone.",
@@ -203,7 +203,7 @@ class BenchmarkRunner:
                         break
 
                 if not matched:
-                    # Jeśli wygląda jak czysty ResNet key, weź go.
+                    # clear ResNet key? ==> fetch it.
                     if (
                             k_clean.startswith("conv1.")
                             or k_clean.startswith("bn1.")
@@ -212,7 +212,7 @@ class BenchmarkRunner:
                     ):
                         backbone_state[k_clean] = v
 
-            # Nie ładuj fc, bo używamy backbone jako feature extractor.
+            #  backbone as feature extractor.
             backbone_state = {
                 k: v for k, v in backbone_state.items()
                 if not k.startswith("fc.")
@@ -283,14 +283,14 @@ class BenchmarkRunner:
         train_dir = self.config.get("train_dir")
         val_dir = self.config.get("val_dir")
 
-        # Bezpieczne sklejanie ścieżek
+
         train_path = str(data_dir / train_dir) if train_dir else str(data_dir)
         val_path = str(data_dir / val_dir) if val_dir else str(data_dir)
 
         batch_size = self.config.get("batch_size", 256)
         num_workers = self.config.get("num_workers", 4)
 
-        # Używamy argumentów nazwanych!
+
         _, val_loader = prepare_data_classification(
             dataset=dataset,
             train_data_path=train_path,
@@ -313,9 +313,9 @@ class BenchmarkRunner:
         all_embeddings = []
         all_labels = []
 
-        # Jeśli załadowaliśmy oficjalny model z torch.hub,
-        # używamy go bezpośrednio jako feature extractor.
-        # Jeśli nie, używamy modelu solo-learn.
+        # if loaded torch.hub model
+        # use it directly as feature extractor
+        # if not use solo-learn model...
         feature_model = self.feature_model if self.feature_model is not None else model
         feature_model.eval()
 
@@ -334,8 +334,8 @@ class BenchmarkRunner:
             else:
                 feats = out
 
-            # Projector ma sens tylko dla modelu solo-learn.
-            # Oficjalne modele z torch.hub zwykle zwracają już backbone features.
+            # Projector only for solo-learn models
+            #  torch.hub models return backbone features.
             if use_projector:
                 if self.feature_model is not None:
                     print("[WARNING] use_projector=True ignored for official feature_model.")
@@ -383,14 +383,13 @@ class BenchmarkRunner:
         train_dir = self.config.get("train_dir")
         val_dir = self.config.get("val_dir")
 
-        # Bezpieczne sklejanie ścieżek
+        # merging paths...
         train_path = str(data_dir / train_dir) if train_dir else str(data_dir)
         val_path = str(data_dir / val_dir) if val_dir else str(data_dir)
 
         batch_size = self.config.get("batch_size", 256)
         num_workers = self.config.get("num_workers", 4)
 
-        # Używamy argumentów nazwanych!
         train_loader, _ = prepare_data_classification(
             dataset=dataset,
             train_data_path=train_path,
@@ -493,11 +492,11 @@ class BenchmarkRunner:
         dense_features_list = []
 
         def hook(module, input, output):
-            # Zapisujemy wyjście [B, 2048, 7, 7] odpinając je od grafu obliczeniowego
+            # save out [B, 2048, 7, 7]
             dense_features_list.append(output.detach())
 
         hook_handle = None
-        # Szukamy ostatniej warstwy splotowej (zazwyczaj layer4 w ResNet50)
+        # look for last convolutional layer (usually layer4 in ResNet50)
         if model is None:
             # og take self.feature_model
             for name, module in self.feature_model.named_modules():
@@ -507,7 +506,7 @@ class BenchmarkRunner:
             self.feature_model.eval()
         else:
             for name, module in model.named_modules():
-                # DODANO 'backbone.layer4' dla kompatybilności z solo-learn
+                # 'backbone.layer4' for  solo-learn compatibility
                 if name in ['layer4', 'network.layer4', 'backbone.layer4']:
                     hook_handle = module.register_forward_hook(hook)
                     break
@@ -526,12 +525,12 @@ class BenchmarkRunner:
         with torch.no_grad():
             for i, (images, _) in enumerate(dataloader):
                 if i >= num_batches:
-                    break  # Liczymy tylko dla kilku batchy, by nie tracić czasu
+                    break
 
                 images = images.to(self.device)
                 dense_features_list.clear()
 
-                # Przepuszczamy przez sieć (Hook złapie dense features)
+                # run through NN (Hook responsible for catching dense features)
                 if model is None:
                     self.feature_model(images)
                 else:
@@ -540,50 +539,48 @@ class BenchmarkRunner:
                 if not dense_features_list:
                     continue
 
-                features = dense_features_list[0]  # Kształt: [B, 2048, 7, 7]
+                features = dense_features_list[0]  # dim: [B, 2048, 7, 7]
                 B, C, H, W = features.shape
-                num_patches = H * W  # Zwykle 49 (7x7)
+                num_patches = H * W  # 49 (7x7)
 
-                # Zmieniamy kształt do [B, 49, 2048]
+                # change dimentions to  [B, 49, 2048]
                 features = features.view(B, C, num_patches).transpose(1, 2)
 
-                # L2 Normalizacja kosinusowa dla każdej łatki z osobna
+                # L2 Norm cosine foreach patch
                 features = torch.nn.functional.normalize(features, p=2, dim=2)
 
-                # =======================================================
-                # METRYKA 1: Patch Diversity / Spatial Redundancy
-                # Zróżnicowanie łatek na tym SAMYM obrazku.
-                # =======================================================
+
+                # Patch Diversity / Spatial Redundancy
+                # Info each patch gives in the image
                 sim_matrix_self = torch.bmm(features, features.transpose(1, 2))  # [B, 49, 49]
 
-                # Maskujemy przekątną (bo łatka zawsze pasuje do samej siebie na 100%)
+                #mask diagonal
                 mask = ~torch.eye(num_patches, dtype=torch.bool, device=self.device)
 
-                # Liczymy średnie podobieństwo różnych łatek do siebie (im więcej, tym gorzej/większe rozmycie)
+                # calculate mean similarity of image patches
                 off_diag_sims = sim_matrix_self[:, mask]
                 batch_spatial_redundancy = off_diag_sims.mean().item()
 
                 total_spatial_redundancy += batch_spatial_redundancy * B
                 img_count += B
 
+                # Dense Similarity Score
+                # cosine similarity between patches
                 # =======================================================
-                # METRYKA 2: Dense Similarity Score
-                # Kosinusowe dopasowanie łatek między RÓŻNYMI losowymi obrazkami.
-                # =======================================================
-                # Łączymy obrazki w pary (0 z 1, 2 z 3 itd.)
+                # connect into pairs (0 with 1, 2 with 3 etc.)
                 for j in range(0, B - 1, 2):
                     feat_A = features[j:j + 1]  # [1, 49, 2048]
                     feat_B = features[j + 1:j + 2]  # [1, 49, 2048]
 
                     sim_matrix_pair = torch.bmm(feat_A, feat_B.transpose(1, 2))  # [1, 49, 49]
 
-                    # Szukamy "najlepszego przyjaciela" w obrazie B dla każdej łatki z A
+                    # look for best fit for A
                     max_sims, _ = sim_matrix_pair.max(dim=2)
 
                     total_dense_similarity += max_sims.mean().item()
                     pair_count += 1
 
-        hook_handle.remove()  # Sprzątamy
+        hook_handle.remove()  # cleanup
 
         result = {}
         if img_count > 0:
@@ -646,7 +643,7 @@ class BenchmarkRunner:
 
         num_classes = self.config.get("benchmark", {}).get("num_classes", 100)
 
-        # Opcjonalny przyrostek dla nazwy pliku, jeśli badamy projektor
+        # prefix depending on the use of projector
         proj_suffix = "_with_projector" if use_projector else "_backbone_only"
 
         if path =="pytorch_hub" or source == "official_repo":
@@ -715,9 +712,8 @@ class BenchmarkRunner:
     def plot_umap_projection(self, features, labels, num_classes, project_suffix="backbone_only"):
         print("[ReportBuilder] UMAP projection...")
 
-        # Redukcja wymiarowości
-        # Zostawiłem metrykę 'cosine', ponieważ dla cech z modeli SSL jest ona
-        # znacznie lepsza niż domyślna Euklidesowa używana w surowym solo-learn
+        # reduce dimentionality
+        #  'cosine' similarity
         reducer = umap.UMAP(n_neighbors=15, min_dist=0.1, n_components=2, metric='cosine', random_state=42)
         embedding = reducer.fit_transform(features)
 
@@ -747,7 +743,7 @@ class BenchmarkRunner:
             alpha=0.3,  # To daje efekt chmury przenikających się kropek
         )
 
-        # Ukrywanie etykiet i osi (styl solo-learn)
+        # hide labels and axis  (styl solo-learn)
         ax.set(xlabel="", ylabel="", xticklabels=[], yticklabels=[])
         ax.tick_params(left=False, right=False, bottom=False, top=False)
 
