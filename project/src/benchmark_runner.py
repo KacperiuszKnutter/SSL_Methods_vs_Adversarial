@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
+from project.src.compression_runner import CompressionRunner
 from project.src.model_registry import ModelRegistry
 from project.src.feature_analyzer import FeatureAnalyzer
 
@@ -688,6 +689,35 @@ class BenchmarkRunner:
 
         eval_loader = self.create_eval_loader()
         dense_metrics = self.compute_dense_metrics(model, eval_loader, num_batches=10)
+
+        # special block for comnpression if it is enabled in config
+        if self.config.get("compression_enabled", False):
+            effective_rank = analysis_result.get("svd", {}).get("effective_rank", 2048)
+
+            model_to_load =  self.feature_model if model is None else model
+
+            comp_runner = CompressionRunner(
+                config=self.config,
+                benchmark_runner=self,  #  self, to share  k-NN / Linear logic
+                model=model_to_load,
+                train_embeddings=train_embeddings,
+                train_labels=train_labels,
+                eval_embeddings=eval_embeddings,
+                eval_labels=eval_labels,
+                effective_rank=effective_rank,
+                num_classes=num_classes,
+                device = self.device
+            )
+
+            # first compress the feature dimentions (PCA) and map the degradation process
+            comp_runner.run_pca_compression()
+
+            # physical comression into lower proj head (frozen backbone)
+            if self.config.get("compression_add_projector", False):
+                comp_runner.run_mlp_projector_compression()
+
+            if self.config.get("compression_distiallation", False):
+                comp_runner.self_distilation()
 
         result = {
             "method": self.config["method"],

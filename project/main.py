@@ -226,6 +226,18 @@ def build_mode_config(raw_config: Dict[str, Any], mode: str) -> Dict[str, Any]:
         flat["linear_c"] = linear_cfg.get("c", 1.0)
         flat["linear_standardize"] = linear_cfg.get("standardize", True)
 
+        # extra for additional model compression using MLP head (distilation)
+        # Flatten compression section.
+        compression_cfg = dict(raw_config.get("compression", {}))
+        flat["compression_enabled"] = compression_cfg.get("enabled", False)
+        flat["compression_step_size"] = compression_cfg.get("step_size", 50)
+        flat["compression_add_projector"] = compression_cfg.get("add_projector", False)
+        flat["compression_distiallation"] = compression_cfg.get("distilation", False)
+
+        # umap_cfg = dict(raw_config.get("umap", {}))
+        # flat["umap_enabled"] = umap_cfg.get("enabled", False)
+        # flat["umap_n_components"] = umap_cfg.get("n_components", 2)
+
         # Benchmark-specific checkpoint can override global checkpoint.
         if benchmark_cfg.get("checkpoint") is not None:
             flat["checkpoint"] = benchmark_cfg.get("checkpoint")

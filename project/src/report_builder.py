@@ -92,6 +92,7 @@ class BenchmarkReportBuilder:
         SVD top-1 energy: {svd.get("energy_ratio_top_1")}
         SVD top-5 energy: {svd.get("energy_ratio_top_5")}
         SVD top-10 energy: {svd.get("energy_ratio_top_10")}
+        SingularVals LowContributionCount: {svd.get("small_singular_values_count")}
 
         Feature Redundancy: {advanced.get("redundancy")}
         Feature Uniformity: {advanced.get("uniformity")}

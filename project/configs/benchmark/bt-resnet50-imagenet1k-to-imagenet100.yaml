@@ -66,6 +66,12 @@ benchmark:
     c: 1.0
     standardize: true
 
+compression:
+  enabled: true
+  step_size: 50      # number of steps in for loop for removing additional dimentions
+  add_projector: true #  performing phisical compression MLP?
+  distilation: true
+
 pretrain:
   enabled: false
 

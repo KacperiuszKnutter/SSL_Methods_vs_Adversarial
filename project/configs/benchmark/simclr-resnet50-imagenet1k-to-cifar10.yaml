@@ -69,6 +69,12 @@ umap:
   enabled: true
   n_components: 2
 
+compression:
+  enabled: true
+  step_size: 25      # number of steps in for loop for removing additional dimentions
+  add_projector: true #  performing phisical compression MLP?
+  distilation: false
+
 pretrain:
   enabled: false
 
