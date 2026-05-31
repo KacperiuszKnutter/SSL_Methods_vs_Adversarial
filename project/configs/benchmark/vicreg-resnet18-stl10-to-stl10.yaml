@@ -1,16 +1,19 @@
 experiment:
-  name: bt-resnet50-imagenet1k-to-cifar10-benchmark
+  name: vicreg-resnet18-stl10-to-stl10-benchmark
   seed: 42
-  description: Official BarlowTwins ResNet50 pretrained on ImageNet-1k, benchmarked on Cifar10.
+  description: Official Vicreg ResNet18 pretrained on stl10, benchmarked on stl10.
 
 model:
-  method: barlow_twins
-  backbone: resnet50
+  method: vicreg
+  backbone: resnet18
   num_classes: 10
-  proj_hidden_dim: 2048
-  proj_output_dim: 8192
+  proj_hidden_dim: 2048 #8192
+  proj_output_dim: 2048 # 8192
   lamb: 0.005
   scale_loss: 0.1
+  sim_loss_weight: 25.0
+  var_loss_weight: 25.0
+  cov_loss_weight: 1.0
   backbone_args:
     zero_init_residual: true
 #  optimizer: lars
@@ -20,12 +23,12 @@ model:
 #  classifier_lr: 0.1
 
 checkpoint:
-  source: official_repo # lub solo_learn
-  path: pytorch_hub # lub sciezka do wlasnego checkpointu w projekcie.
-  hub_repo: facebookresearch/barlowtwins:main
-  hub_model: resnet_50
-  pretrain_dataset: imagenet1k
-  architecture: resnet50
+  source:  solo_learn #official_repo # lub solo_learn
+  path: ./project/models_out/checkpoints/mine/vicreg-stl10-5vwka5hs-ep=317.ckpt #pytorch_hub # lub sciezka do wlasnego checkpointu w projekcie.
+  hub_repo: null
+  hub_model: null
+  pretrain_dataset: stl10
+  architecture: resnet18
   verified: true
 
 outputs:
@@ -37,7 +40,7 @@ outputs:
 benchmark:
   enabled: true
 
-  dataset: cifar10
+  dataset: stl10
   num_classes: 10
 
   data_dir: ./datasets/
@@ -51,10 +54,10 @@ benchmark:
   use_projector: false
 
   preprocessing:
-    type: custom
-    input_size: 224
-    resize_size: 224
-    normalization: imagenet
+    type: custom # Zmiana z imagenet_eval na custom
+    input_size: 96
+    resize_size: 96
+    normalization: cifar
 
   knn:
     k: 20
@@ -65,12 +68,6 @@ benchmark:
     max_iter: 1000
     c: 1.0
     standardize: true
-
-compression:
-  enabled: true
-  step_size: 50      # number of steps in for loop for removing additional dimentions
-  add_projector: true #  performing phisical compression MLP?
-  distilation: true
 
 pretrain:
   enabled: false

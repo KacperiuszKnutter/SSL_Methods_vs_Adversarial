@@ -1,11 +1,11 @@
 experiment:
-  name: simclr-resnet50-imagenet1k-to-cifar10-benchmark
+  name: simclr-resnet18-stl10-to-cifar10-benchmark
   seed: 42
-  description: Official simclr ResNet50 pretrained on ImageNet-1k, benchmarked on Cifar10.
+  description: Official simclr ResNet18 pretrained on stl10, benchmarked on Cifar10.
 
 model:
   method: simclr
-  backbone: resnet50
+  backbone: resnet18
   num_classes: 10
   proj_hidden_dim: 2048
   proj_output_dim: 256
@@ -19,12 +19,12 @@ model:
 #  classifier_lr: 0.1
 
 checkpoint:
-  source: solo_learn # lub solo_learn
-  path: ./project/models_out/checkpoints/simclr-vissl-converted-resnet50-800epochs.pth # lub sciezka do wlasnego checkpointu w projekcie.
+  source: solo_learn # or solo_learn
+  path: ./project/models_out/checkpoints/mine/simclr-stl10-iv0c8dgi-ep=349.ckpt # or sciezka do wlasnego checkpointu w projekcie.
   hub_repo: null
   hub_model: null
-  pretrain_dataset: imagenet1k
-  architecture: resnet50
+  pretrain_dataset: stl10
+  architecture: resnet18
   verified: true
 
 outputs:
@@ -39,11 +39,11 @@ benchmark:
   dataset: cifar10
   num_classes: 10
 
-  data_dir: ./datasets/
+  data_dir: ./datasets/ #cifar-10-batches-py/
   train_dir: null
   val_dir: null
 
-  batch_size: 256 #2048
+  batch_size: 2048
   num_workers: 4
   gpus: "0"
 
@@ -51,9 +51,9 @@ benchmark:
 
   preprocessing:
     type: custom
-    input_size: 224
-    resize_size: 224
-    normalization: imagenet
+    input_size: 32
+    resize_size: 32
+    normalization: cifar
 
   knn:
     k: 20
@@ -70,10 +70,10 @@ umap:
   n_components: 2
 
 compression:
-  enabled: true
+  enabled: false
   step_size: 25      # number of steps in for loop for removing additional dimentions
-  add_projector: true #  performing phisical compression MLP?
-  distilation: true
+  add_projector: false #  performing phisical compression MLP?
+  distilation: false
 
 pretrain:
   enabled: false

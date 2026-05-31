@@ -90,7 +90,7 @@ class BenchmarkRunner:
             raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
 
         print(f"[CHECKPOINT] Loading local checkpoint: {ckpt_path}")
-        checkpoint = torch.load(ckpt_path, map_location=self.device)
+        checkpoint = torch.load(ckpt_path, map_location=self.device, weights_only=False)
 
         if isinstance(checkpoint, dict):
             state_dict = checkpoint.get("state_dict", checkpoint.get("model", checkpoint))
@@ -113,6 +113,7 @@ class BenchmarkRunner:
                 .replace("encoder.", "")
                 .replace("resnet.", "")
                 .replace("backbone.", "")
+                .replace("model.", "") # dla treningu ucznia
             )
 
             if not k_clean.startswith("fc."):
@@ -328,12 +329,12 @@ class BenchmarkRunner:
 
             out = feature_model(X)
 
-            if isinstance(out, dict):
-                if "feats" not in out:
-                    raise ValueError(f"Output dict does not contain 'feats'. Keys: {out.keys()}")
-                feats = out["feats"]
-            else:
-                feats = out
+            feats = out["feats"] if isinstance(out, dict) else out
+
+            # Dodaj to zabezpieczenie:
+            if torch.isnan(feats).any() or torch.isinf(feats).any():
+                print("\n[CRITICAL WARNING] Sieć wygenerowała wartości NaN lub Inf w tej paczce! Zerowanie tensorów.")
+                feats = torch.nan_to_num(feats, nan=0.0, posinf=0.0, neginf=0.0)
 
             # Projector only for solo-learn models
             #  torch.hub models return backbone features.

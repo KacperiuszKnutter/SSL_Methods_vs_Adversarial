@@ -39,7 +39,7 @@ benchmark:
   dataset: cifar10
   num_classes: 10
 
-  data_dir: ./datasets/cifar-10-batches-py/
+  data_dir: ./datasets/
   train_dir: null
   val_dir: null
 
@@ -50,9 +50,9 @@ benchmark:
   use_projector: false
 
   preprocessing:
-    type: imagenet_eval
+    type: custom
     input_size: 224 # need to resize the images
-    resize_size: 256
+    resize_size: 224
     normalization: imagenet
 
   knn:
@@ -69,7 +69,7 @@ compression:
   enabled: true
   step_size: 50      # number of steps in for loop for removing additional dimentions
   add_projector: true #  performing phisical compression MLP?
-  distilation: false
+  distilation: true
 
 pretrain:
   enabled: false

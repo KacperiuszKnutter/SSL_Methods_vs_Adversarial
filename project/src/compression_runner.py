@@ -241,11 +241,11 @@ class CompressionRunner:
 
         # train teachers head (SSL Model)
         self._log_and_print("-> Linear Probing teachers network...")
-        teacher = self.train_teacher(teacher, train_loader, eval_loader, epochs=15, tag="Teacher")
+        teacher = self.train_teacher(teacher, train_loader, eval_loader, epochs=30, tag="Teacher")
 
         # model distilation
         self._log_and_print("-> Distilate teacher knowladge to smaller cnn...")
-        student_model = self.train_student(teacher, student_wrapper, train_loader, eval_loader, epochs=30)
+        student_model = self.train_student(teacher, student_wrapper, train_loader, eval_loader, epochs=80)
 
         self._log_and_print("\n-> Compression efficency evaluation...")
 
@@ -406,7 +406,10 @@ class CompressionRunner:
             param.requires_grad = True
 
         # optimizer only on na fc layer!
-        optimizer = torch.optim.Adam(teacher.fc.parameters(), lr=lr)
+        #optimizer = torch.optim.Adam(teacher.fc.parameters(), lr=lr)
+
+        optimizer = torch.optim.SGD(teacher.fc.parameters(), lr=lr, momentum=0.9, weight_decay=1e-4)
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=epochs)
 
         for epoch in range(epochs):
             teacher.train()
@@ -422,10 +425,13 @@ class CompressionRunner:
                 loss.backward()
                 optimizer.step()
 
+            scheduler.step()
+
             accuracy = self.evaluate_accuracy(teacher, eval_loader)
             self._log_and_print(f"   [{tag}] Epoch {epoch + 1}: Val Acc = {accuracy * 100:.2f}%")
 
         if save_path:
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
             torch.save(teacher.state_dict(), save_path)
 
         return teacher
@@ -489,7 +495,7 @@ class CompressionRunner:
         best_val_acc = 0.0
 
         # reduce LR if validation loss doesn't improve for 3 epochs
-        scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=3)
+        scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=6)
         # for plots
         history_loss = []
         history_acc = []

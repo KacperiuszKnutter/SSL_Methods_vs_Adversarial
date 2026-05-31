@@ -346,7 +346,7 @@ pip-wheel-metadata/
 # repo solo/
 # dont want to cheange nothin for now
 solo-learn/solo/datasets/*
-
+solo-learn/*
 # Dane
 datasets/
 

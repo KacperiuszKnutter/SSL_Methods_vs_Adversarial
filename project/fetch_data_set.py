@@ -3,6 +3,10 @@ from pathlib import Path
 import kagglehub
 import os
 import shutil
+import urllib.request
+import tarfile
+from torchvision.datasets import STL10
+import ssl
 
 ROOT = "./datasets"
 
@@ -28,6 +32,29 @@ def fetch_data_set(dataset_name: str) -> None:
     else:
         print(f"[ERROR] Dataset {dataset_name} not found")
 
+def fetch_stl10():
+    os.makedirs(ROOT, exist_ok=True)
+
+    url = "http://ai.stanford.edu/~acoates/stl10/stl10_binary.tar.gz"
+    tar_path = os.path.join(ROOT, "stl10_binary.tar.gz")
+    extract_path = os.path.join(ROOT, "stl10_binary")
+
+    print(f"[1/3] Pobieranie oficjalnego archiwum STL-10 (2.5 GB) z {url}...")
+    # Pobieramy plik (to potrwa chwilę w zależności od łącza)
+    urllib.request.urlretrieve(url, tar_path)
+    print("[SUCCESS] Pomyślnie pobrano plik .tar.gz!")
+
+    print("[2/3] Wypakowywanie archiwum...")
+    with tarfile.open(tar_path, "r:gz") as tar:
+        # Wypakowuje bezpośrednio do ./datasets, tworząc natywny stl10_binary
+        tar.extractall(path=ROOT)
+    print("[SUCCESS] Wypakowano pomyślnie!")
+
+    print("[3/3] Sprzątanie...")
+    os.remove(tar_path)
+
+    print(f"\n[GOTOWE] Dataset znajduje się w: {os.path.abspath(extract_path)}")
+    print("Możesz teraz użyć tej ścieżki w solo-learn!")
 
 def fetch_via_kagglehub(dataset_name: str) -> None:
     dataset_mapping = {
@@ -52,7 +79,10 @@ def fetch_via_kagglehub(dataset_name: str) -> None:
 
 
 # Run for cifar for now
-fetch_data_set("cifar10")
+#fetch_data_set("cifar10")
 
 # run for ImageNet-100
 #fetch_via_kagglehub("imagenet100")
+
+# download stl10
+fetch_stl10()

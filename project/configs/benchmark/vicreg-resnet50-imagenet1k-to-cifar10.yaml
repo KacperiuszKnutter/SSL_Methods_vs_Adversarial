@@ -43,7 +43,7 @@ benchmark:
   dataset: cifar10
   num_classes: 10
 
-  data_dir: ./datasets/cifar-10-batches-py/
+  data_dir: ./datasets/
   train_dir: null
   val_dir: null
 
