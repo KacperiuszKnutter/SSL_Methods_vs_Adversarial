@@ -359,3 +359,5 @@ project/models_out/
 *.pth.tar
 *.npy
 *.tar.gz
+# nie potrzebne na repo
+.torch_cache
